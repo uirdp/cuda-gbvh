@@ -13,14 +13,14 @@ struct Material {
     float exponent;
     float reflectance;
     float transparency;
-    float refractionIndex;
-    Texture *ambientMap;
-    Texture *diffuseMap;
-    Texture *specularMap;
-    Texture *bumpMap;
-    float bumpScale;
+    float refraction_index;
+    Texture *ambient_map;
+    Texture *diffuse_map;
+    Texture *specular_map;
+    Texture *bump_map;
+    float bump_scale;
 
-    static Material defaultMaterial;
+    static Material default_material;
 
     // static Material defaultMaterial() {
     //     Material mat;
@@ -42,8 +42,8 @@ struct Material {
 
     Material(const std::string& _name) : name(_name), ambient(0.1f, 0.1f, 0.1f), diffuse(0.8f, 0.8f, 0.8f),
         specular(1.0f, 1.0f, 1.0f), exponent(32.0f), reflectance(0.0f), transparency(0.0f),
-        refractionIndex(1.0f), ambientMap(nullptr), diffuseMap(nullptr), specularMap(nullptr),
-        bumpMap(nullptr), bumpScale(1.0f) {}
+        refraction_index(1.0f), ambient_map(nullptr), diffuse_map(nullptr), specular_map(nullptr),
+        bump_map(nullptr), bump_scale(1.0f) {}
 
     bool possible_caustics() const {
         return transparency != 0 || reflectance != 0;

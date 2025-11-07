@@ -6,6 +6,7 @@
 #include "embree/kernels/geometry/triangle.h"
 #include "aabb.h"
 #include "glm/vec3.hpp"
+#include "utility.h"
 
 #include <limits>
 
@@ -95,4 +96,87 @@ struct LeafNode : public GridNodeBase {
         triangles = this->triangles_buf;
     }
 
-}
+    ~LeafNode() {
+        if(allocated) free(triangles);
+    }
+
+    Object* get_object(int i){
+        return (Object*) (triangles[i>>2].primID()[i&3] |
+                          ((size_t)triangles[i>>2].geomID()[i&3] << 32));
+    }
+
+    void set_object(int i, Object* obj){
+        triangles[i>>2].primID()[i&3] = ((size_t)obj) >> 32;
+        triangles[i>>2].geomID()[i&3] = (size_t)obj; //　これ同じメッシュのobjectの最初の３２ビットが同じになるってどこで保証してる？
+    }
+
+    void allocate() { // nobjs個のtriangleに十分な領域を割りつける
+        if(nobjs > MAX_LEAF_SIZE) {
+            int m = (nobjs + 3) / 4;
+            triangles = (embree::Triangle4*)malloc(sizeof(embree::Triangle4) * m);
+            if(!triangles) no_memory();
+            allocated = m;
+        }
+    }
+
+    void expand() { // 1つtriangleを追加するのに十分なように領域を拡張する
+        if(nobjs >= MAX_LEAF_SIZE){
+            if(allocated == 0){
+                allocated = LEAF_BUF_SIZE * 2;
+                triangles = (embree::Triangle4*)malloc(sizeof(embree::Triangle4) * allocated);
+                if(!triangles) no_memory();
+                memcpy(triangles, triangles_buf, sizeof(embree::Triangle4) * LEAF_BUF_SIZE);
+            } else if(nobjs > allocated * 4){
+                allocated *= 2;
+                triangles = (embree::Triangle4*)realloc(triangles, sizeof(embree::Triangle4) * allocated);
+                if(!triangles) no_memory();
+            }
+        }
+    }
+
+};
+
+struct ReturnRecord{
+    AABB aabb;
+    TreeNode *node;
+    float cost;
+    ReturnRecord() : node(nullptr), cost(0) {}
+    ReturnRecord(TreeNode* node, float cost, const AABB& aabb) : node(node), cost(cost), aabb(aabb) {}
+};
+
+struct ListElement : public ReturnRecord {
+    int idx;
+    ListElement() {}
+    ListElement(const ReturnRecord& re, int idx) : ReturnRecord(re), idx(idx) {}
+};
+
+TreeNode* build_tree_bin(const std::vector<Object*>& objects,
+			 const std::vector<struct Action>&actions,
+			 const AABB& aabb, const AABB& cent_aabb);
+TreeNode* build_tree_lbvh(const std::vector<Object*>& objects,
+			  const std::vector<struct Action>&actions,
+			  const AABB& aabb, const AABB& cent_aabb);
+TreeNode* build_tree_hlbvh(const std::vector<Object*>& objects,
+			   const std::vector<struct Action>&actions,
+			   const AABB& aabb, const AABB& cent_aabb);
+TreeNode* build_tree_agc(const std::vector<Object*>& objects,
+			 const std::vector<struct Action>&actions,
+			 const AABB& aabb, const AABB& cent_aabb);
+
+void process_actions(TreeNode* &root, const std::vector<Object*>& objects,
+		     const std::vector<struct Action>& actions,
+		     const AABB& cent_aabb, int frame);
+void refit_tree(TreeNode *root, const std::vector<Object*>& objects,
+		const std::vector<struct Action>& actions,
+		const AABB& aabb, const AABB& cent_aabb);
+
+ReturnRecord build_bvh(TreeNode *node, const AABB& cent_aabb, int level);
+bool find_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
+bool find_any_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
+
+void destroy_tree(TreeNode *root);
+void count_nodes(TreeNode *node, 
+		 int& ngrids, int &nbranches, int &nleaves,
+		 int& ndirtynodes, int &nlfbytes);
+float calc_sah_cost(TreeNode *node);
+void print_tree(TreeNode *root, int level = 0);

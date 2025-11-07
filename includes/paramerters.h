@@ -6,13 +6,13 @@
 #pragma once
 
 
-struct InputParameters {
+struct InputParameter {
     std::string obj_file;
-    std::string param_file;
-    glm::ivec2 resolution;
-    glm::vec3 camera_position;
-    glm::vec3 camera_lookat;
-    glm::vec3 camera_up;
+    std::string file_name; // パラメタファイルのファイル名
+    glm::ivec2 image_size;
+    glm::vec3 view_point;
+    glm::vec3 look_at;
+    glm::vec3 view_up;
     float camera_fov;
     float shadowIntensity;
     glm::vec3 background_color;
@@ -24,10 +24,10 @@ struct InputParameters {
     int render_repeat;
     float bump_strength;
 
-    InputParameters() : resolution(512, 512),
-                        camera_position(0.0f, 0.0f, 5.0f),
-                        camera_lookat(0.0f, 0.0f, 0.0f),
-                        camera_up(0.0f, 1.0f, 0.0f),
+    InputParameter() :  image_size(512, 512),
+                        view_point(0.0f, 0.0f, 5.0f),
+                        look_at(0.0f, 0.0f, 0.0f),
+                        view_up(0.0f, 1.0f, 0.0f),
                         camera_fov(45.0f),
                         shadowIntensity(0.5f),
                         background_color(0.0f, 0.0f, 0.0f),
@@ -38,7 +38,7 @@ struct InputParameters {
                         render_repeat(1),
                         bump_strength(1.0f) {}
 
-    std::string get_obj_file() const {
+    std::string get_obj_file_name() const {
         return obj_file;
     }
 };
