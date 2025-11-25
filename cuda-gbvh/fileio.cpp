@@ -1,7 +1,7 @@
-#include "../includes/fileio.h"
-#include "../includes/statistics.h"
-#include "../includes/spline.h"
-#include "../includes/glm/vec3.hpp"
+#include "includes/fileio.h"
+#include "includes/statistics.h"
+#include "includes/spline.h"
+#include "includes/external/glm/vec3.hpp"
 #include <ctype.h>
 #include <opencv2/opencv.hpp>
 

@@ -1,0 +1,13 @@
+objfile FairyForest/f%03d.obj
+frame 0 200
+#imgsize 800 600
+imgsize 1200 900
+viewpoint 0.156292 0.544392 1.041332
+lookat -0.194640 0.309629 -0.013445
+viewup 0.000000 1.000000 0.000000
+fovy 45
+shadowing 0.5
+background 0 0 0.2
+#dirlight -0.5 0.5 1  0.4 0.4 0.4
+#dirlight 0.3 1 -0.3  0.3 0.3 0.3
+pointlight 0.1 0.1 0.8  0.8 0.8 0.8  1 0 1e-3
