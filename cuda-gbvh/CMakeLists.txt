@@ -14,6 +14,8 @@ add_executable(cuda_gbvh
     scene.cu
     check_cuda.cpp
     main.cu
+    gbvh.cu
+    bvtree_common.cu
 )           
 
 target_include_directories(cuda_gbvh PRIVATE

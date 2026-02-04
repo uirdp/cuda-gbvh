@@ -334,6 +334,24 @@ assert.h
 
 ../includes/external/opencv2/opencv_modules.hpp
 
+/home/m5291093/cuda-gbvh/cuda-gbvh/bvtree_common.cu
+includes/bvtree.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
+
+/home/m5291093/cuda-gbvh/cuda-gbvh/gbvh.cu
+includes/bvtree.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
+includes/object.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
+includes/scene.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
+includes/external/glm/vec3.hpp
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
+vector
+-
+alloca.h
+-
+
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/aabb.h
 ray.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/ray.h
@@ -346,7 +364,7 @@ external/glm/glm.hpp
 string
 -
 
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.h
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
 object.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
 aabb.h
@@ -357,7 +375,15 @@ triangle.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/triangle.cuh
 utility.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/utility.h
+intersection.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/intersection.cuh
+scene.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
+cuda_runtime.h
+-
 limits
+-
+vector
 -
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/check_cuda.h
@@ -1513,12 +1539,14 @@ object.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
 aabb.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/aabb.h
-bvtree.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.h
+bvtree.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
 utility.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/utility.h
 check_cuda.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/check_cuda.h
+paramerters.h
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/paramerters.h
 map
 -
 vector
@@ -1553,24 +1581,6 @@ external/opencv2/core/base.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/opencv2/core/base.hpp
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/trace.cuh
-ray.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/ray.h
-object.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
-triangle.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/triangle.cuh
-intersection.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/intersection.cuh
-external/glm/vec3.hpp
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
-scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
-cuda_runtime.h
--
-vector
--
-stdio.h
--
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/triangle.cuh
 object.cuh
@@ -1625,4 +1635,12 @@ includes/renderer.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
 includes/utility.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/utility.h
+
+/home/m5291093/cuda-gbvh/cuda-gbvh/renderer.cu
+includes/renderer.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
+
+/home/m5291093/cuda-gbvh/cuda-gbvh/scene.cu
+includes/scene.cuh
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
 

@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/cuda_gbvh.dir/bvtree_common.cu.o"
   "CMakeFiles/cuda_gbvh.dir/check_cuda.cpp.o"
   "CMakeFiles/cuda_gbvh.dir/fileio.cpp.o"
+  "CMakeFiles/cuda_gbvh.dir/gbvh.cu.o"
   "CMakeFiles/cuda_gbvh.dir/main.cu.o"
   "CMakeFiles/cuda_gbvh.dir/renderer.cu.o"
   "CMakeFiles/cuda_gbvh.dir/scene.cu.o"

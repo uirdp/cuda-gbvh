@@ -10,17 +10,13 @@ __global__ void render_image(vec3* framebuffer, int image_width, int image_heigh
     float u = float(x) / float(image_width);
     float v = float(y) / float(image_height);
 
-    // printf("Debug: frame %d", frame);
-
     vec3 direction = glm::normalize(cam_params.lower_left_corner + u * cam_params.horizontal + v * cam_params.vertical - cam_params.origin);
     Ray ray(cam_params.origin, direction);
 
-
     int num_tris = d_scene->num_actions_at_frame[frame];
-    // printf("Debug: Number of triangles at frame %d: %d\n", frame, num_tris);
 
-    vec3 color = raycast(ray, d_scene, num_tris, frame);
-    // printf("Debug: Pixel (%d, %d): Color (%.2f, %.2f, %.2f)\n", x, y, color.r, color.g, color.b);  
+    vec3 color = raycast(ray, d_scene, frame);
+
     int pixel_index = frame * image_width * image_height + y * image_width + x;  // framebuffer[frame][x][y]
     framebuffer[pixel_index] = color;
 }
@@ -87,25 +83,94 @@ __device__ vec3 closest_hit(Ray ray, Intersection isect){
     return isect.obj->get_normal_at_intersection(ray, isect.t, isect.uv) * 0.5f + vec3(0.5f, 0.5f, 0.5f);
 }
 
-__device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int num_tris, int frame) {
-    // printf("Debug: raycast called for frame %d with %d triangles\n", frame, num_tris);
-    Intersection isect(FLT_MAX);
-    bool hit = false;
-    float closest_t = FLT_MAX;
+__device__ bool find_intersection_bvh(
+    const DeviceScene* d_scene,
+    const Ray& ray,
+    Intersection& itsc,
+    float t_min,
+    float t_max
+){
+    const GPU_BVH_Node* nodes  = d_scene->bvh_nodes;
+    const GPU_LeafNode* leaves = d_scene->bvh_leaves;
+    const Triangle* triangles = d_scene->triangles;
 
-    for(int i = 0; i < num_tris; i++){
-        Triangle* tri = d_scene->get_triangle_at_frame(frame, i);
-        // printf("triangle %d vertices: (%.2f, %.2f, %.2f), (%.2f, %.2f, %.2f), (%.2f, %.2f, %.2f)\n", i,
-        //        tri->vertex(0).x, tri->vertex(0).y, tri->vertex(0).z,
-        //        tri->vertex(1).x, tri->vertex(1).y, tri->vertex(1).z,
-        //        tri->vertex(2).x, tri->vertex(2).y, tri->vertex(2).z);
-        if(intersect_triangle(ray, tri, isect, 0.001f, closest_t)){
-            hit = true;
-            closest_t = isect.t;
+    int stack[64];   // 深さは log2(N) 程度 → 固定長でOK
+    int sp = 0;
+
+    bool hit_any = false;
+    float closest_t = t_max;
+
+    int root = d_scene->bvh_root;
+    if (root < 0) return false;
+
+    stack[sp++] = root;
+
+    while (sp > 0) {
+        if (sp >= 64) return hit_any;  // とりあえず溢れたら打ち切り
+        int node_idx = stack[--sp];
+        const GPU_BVH_Node& node = nodes[node_idx];
+
+        // AABB カリング
+        if (!intersect_aabb(node.aabb, ray, t_min, closest_t))
+            continue;
+
+        // =========================
+        //          LEAF
+        // =========================
+        if (node.leaf >= 0) {
+            const GPU_LeafNode& leaf = leaves[node.leaf];
+
+            for (int i = 0; i < leaf.tri_count; ++i) {
+                // if(d_scene->num_triangles <= leaf.tri_offset + i){
+                //     printf("Warning: Triangle index out of bounds: %d (num_triangles: %d)\n", leaf.tri_offset + i, d_scene->num_triangles);
+                //     continue;
+                // }
+                const Triangle* tri =
+                    &triangles[leaf.tri_offset + i]; // indexを0にするとエラーが起きないので、ここが原因
+
+                Intersection cand;
+                if (intersect_triangle(ray, tri, cand, t_min, closest_t)) {
+                    closest_t = cand.t;
+                    itsc = cand;
+                    hit_any = true;
+                }
+            }
+        }
+        // =========================
+        //        INTERNAL
+        // =========================
+        else {
+            // left
+            if (node.left >= 0)
+                stack[sp++] = node.left;
+
+            // right
+            if (node.right >= 0)
+                stack[sp++] = node.right;
         }
     }
 
-    vec3 color(0.0f, 0.0f, 0.0f);
-    color = hit ? closest_hit(ray, isect) : vec3(0.0f, 1.0f, 0.0f);
+    return hit_any;
+}
+
+__device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int frame){
+    Intersection isect(FLT_MAX);
+
+    bool hit = find_intersection_bvh(
+        d_scene,
+        ray,
+        isect,
+        0.001f,
+        FLT_MAX
+    );
+
+    vec3 color;
+    if (hit) {
+        color = closest_hit(ray, isect);
+    } else {
+        color = vec3(0.0f, 1.0f, 0.0f);
+    }
+
     return color;
 }
+

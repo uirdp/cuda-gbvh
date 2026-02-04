@@ -75,4 +75,11 @@ struct AABB {
                  vmin.x, vmin.y, vmin.z, vmax.x, vmax.y, vmax.z);
         return buf;
     }
+
+    static AABB merge(const AABB b0, const AABB b1) {
+        return AABB(
+            glm::min(b0.vmin, b1.vmin),
+            glm::max(b0.vmax, b1.vmax)
+        );
+    }
 };

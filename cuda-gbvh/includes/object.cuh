@@ -16,6 +16,7 @@ class Object {
 public:
     CodeType code; // Grid Code
     int expire; // 消滅は後々扱うかも、1以上だとそのフレームで消滅
+    int id = -1;
 #if DO_REFIT
 #endif
 
@@ -50,5 +51,6 @@ struct Intersection {
     glm::vec2 uv;
 
     __host__ __device__ Intersection(float _t) : obj(nullptr), t(_t), uv(0.0f, 0.0f) {}
+    __host__ __device__ Intersection() = default;
 };
 

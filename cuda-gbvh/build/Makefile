@@ -123,6 +123,33 @@ cuda_gbvh/fast:
 	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/build
 .PHONY : cuda_gbvh/fast
 
+bvtree_common.o: bvtree_common.cu.o
+
+.PHONY : bvtree_common.o
+
+# target to build an object file
+bvtree_common.cu.o:
+	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/bvtree_common.cu.o
+.PHONY : bvtree_common.cu.o
+
+bvtree_common.i: bvtree_common.cu.i
+
+.PHONY : bvtree_common.i
+
+# target to preprocess a source file
+bvtree_common.cu.i:
+	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/bvtree_common.cu.i
+.PHONY : bvtree_common.cu.i
+
+bvtree_common.s: bvtree_common.cu.s
+
+.PHONY : bvtree_common.s
+
+# target to generate assembly for a file
+bvtree_common.cu.s:
+	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/bvtree_common.cu.s
+.PHONY : bvtree_common.cu.s
+
 check_cuda.o: check_cuda.cpp.o
 
 .PHONY : check_cuda.o
@@ -176,6 +203,33 @@ fileio.s: fileio.cpp.s
 fileio.cpp.s:
 	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/fileio.cpp.s
 .PHONY : fileio.cpp.s
+
+gbvh.o: gbvh.cu.o
+
+.PHONY : gbvh.o
+
+# target to build an object file
+gbvh.cu.o:
+	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/gbvh.cu.o
+.PHONY : gbvh.cu.o
+
+gbvh.i: gbvh.cu.i
+
+.PHONY : gbvh.i
+
+# target to preprocess a source file
+gbvh.cu.i:
+	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/gbvh.cu.i
+.PHONY : gbvh.cu.i
+
+gbvh.s: gbvh.cu.s
+
+.PHONY : gbvh.s
+
+# target to generate assembly for a file
+gbvh.cu.s:
+	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/gbvh.cu.s
+.PHONY : gbvh.cu.s
 
 main.o: main.cu.o
 
@@ -294,12 +348,18 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... cuda_gbvh"
+	@echo "... bvtree_common.o"
+	@echo "... bvtree_common.i"
+	@echo "... bvtree_common.s"
 	@echo "... check_cuda.o"
 	@echo "... check_cuda.i"
 	@echo "... check_cuda.s"
 	@echo "... fileio.o"
 	@echo "... fileio.i"
 	@echo "... fileio.s"
+	@echo "... gbvh.o"
+	@echo "... gbvh.i"
+	@echo "... gbvh.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

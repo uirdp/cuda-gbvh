@@ -27,7 +27,17 @@ struct CameraParameter{
 __global__ void render_image(vec3* framebuffer, int image_width, int image_height, CameraParameter cam_params, DeviceScene* d_scene, int frame);
 
 void export_to_ppm(string filename, vec3* framebuffers, int image_width, int image_height, int num_frames);
-__device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int num_tris, int frame);
+__device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int frame);
 
 void print_frame_buffer(vec3* framebuffer, int image_width, int image_height, int num_frames);
 void print_one_frame_buffer(vec3* framebuffer, int image_width, int image_height, int frame);
+
+struct DeviceScene;
+
+__device__ bool find_intersection_bvh(
+    const DeviceScene* d_scene,
+    const Ray& ray,
+    Intersection& itsc,
+    float t_min,
+    float t_max
+);

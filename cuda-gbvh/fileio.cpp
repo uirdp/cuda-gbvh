@@ -702,6 +702,7 @@ RT_ReadObjFile(const InputParameter& param, Scene& scene)
 					    vertices[frame][iv1 - 1],
 					    vertices[frame][iv2 - 1]);
 		tr->set_material(f->material);
+		tr->id = scene.objects.size();
 		scene.scenario[frame].push_back(Action(scene.objects.size()));
 		//printf("frame=%d insert %d\n", frame, scene.objects.size());
 		scene.objects.push_back(tr);

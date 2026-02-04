@@ -1,9 +1,10 @@
+#pragma once
+
 #include <string>
 #include <vector>
 #include "external/glm/vec2.hpp"
 #include "external/glm/vec3.hpp"
 #include "light.h"
-#pragma once
 
 
 struct InputParameter {

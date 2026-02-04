@@ -3,9 +3,10 @@
 #include "external/glm/vec3.hpp"
 #include "object.cuh"
 #include "aabb.h"
-#include "bvtree.h"
+#include "bvtree.cuh"
 #include "utility.h"
 #include "check_cuda.h"
+#include "paramerters.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -32,10 +33,16 @@ struct ViewAction {
 
 using std::vector;
 using std::map;
+using glm::vec3;
+
+struct TreeNode;
+
 struct Scene {
     vector<Object*> objects;               //　全フレーム分のオブジェクト
     map<std::string, Material*> materials;
     map<std::string, Texture*> textures;
+    AABB aabb; // シーン全体のAABB
+    AABB cent_aabb; // シーン全体の重心AABB
     TreeNode *bvtree_root;
     TreeNode *grid_root;
     void *tree_buffer;
@@ -76,12 +83,16 @@ struct Scene {
     }
 };
 
+struct GPU_BVH_Node;
+struct GPU_LeafNode;
 // __device__側のコードではvectorやmapが使えないので、Sceneをdeviceに送る際は一度SceneをDeviceSceneに変更する
 struct DeviceScene{
     Triangle* triangles;
-    TreeNode *bvtree_root;
-    TreeNode *grid_root;
-    void *tree_buffer;
+    GPU_BVH_Node* bvh_nodes;
+    GPU_LeafNode* bvh_leaves;
+    int bvh_root;
+    int num_bvh_nodes;
+    int num_bvh_leaves;
 
     int num_triangles;
     int* num_actions_at_frame;     // 各フレームのアクションのサイズ
@@ -90,7 +101,7 @@ struct DeviceScene{
 
     Action* scenario; 
 
-    DeviceScene() : bvtree_root(nullptr), grid_root(nullptr), tree_buffer(nullptr) {}
+    DeviceScene() : bvh_nodes(nullptr), bvh_leaves(nullptr), bvh_root(-1), num_bvh_nodes(0), num_bvh_leaves(0) {}
     ~DeviceScene() {
         for(int i = 0; i < num_triangles; i++){
             // delete objects[i]; 
@@ -122,5 +133,12 @@ __device__ inline int get_num_triangles_at_frame(const DeviceScene* scene, int f
     return scene->num_actions_at_frame[frame];
 }
 
-void copy_scene_to_device_scene(Scene& scene, DeviceScene*& d_scene);
+struct LeafNode;
 
+void copy_scene_to_device_scene(Scene& scene, DeviceScene*& d_scene);
+void free_device_scene(DeviceScene* d_scene);
+
+static void calc_scene_aabb(vector<Object*>& objects, AABB& scene_aabb, AABB &cent_aabb);
+void build_initial_tree(Scene& scene, InputParameter& param, int frame, vector<LeafNode*>& dirty_leaves);
+void modify_scene(Scene &scene, InputParameter& param, int frame, vector<LeafNode*>& dirty_leaves);
+void update_device_bvh(const Scene& scene, DeviceScene* d_scene);

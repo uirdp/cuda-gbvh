@@ -5,6 +5,8 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CUDA
+  "/home/m5291093/cuda-gbvh/cuda-gbvh/bvtree_common.cu" "/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles/cuda_gbvh.dir/bvtree_common.cu.o"
+  "/home/m5291093/cuda-gbvh/cuda-gbvh/gbvh.cu" "/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles/cuda_gbvh.dir/gbvh.cu.o"
   "/home/m5291093/cuda-gbvh/cuda-gbvh/main.cu" "/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles/cuda_gbvh.dir/main.cu.o"
   "/home/m5291093/cuda-gbvh/cuda-gbvh/renderer.cu" "/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles/cuda_gbvh.dir/renderer.cu.o"
   "/home/m5291093/cuda-gbvh/cuda-gbvh/scene.cu" "/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles/cuda_gbvh.dir/scene.cu.o"

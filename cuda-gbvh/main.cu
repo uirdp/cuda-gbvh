@@ -47,7 +47,7 @@ int main(int argc, char** argv){
 	    --argc, ++argv;
     }
 
-    param.build_type = BUILD_TREE_LBVH;
+    param.build_type = BUILD_TREE_GBVH;
 
     if( argc < 2 || argv[1][0] == '-' ) {
         fprintf(stderr, "usage: raytr [-n<nthreads>] [-o[imgfile]] [-i] [-gbvh/-bin/-lbvh/-hlbvh/-agc] parameter-file\n");
@@ -119,9 +119,14 @@ int main(int argc, char** argv){
     CHECK_CUDA(cudaDeviceSynchronize());
     
     glm::vec2 resolution(image_width, image_height);
+
+    vector<LeafNode*> dirty_leaves;
+    build_initial_tree(scene, param, 0, dirty_leaves);
+    printf("Initial tree built.\n");
     
     DeviceScene* d_scene;
     copy_scene_to_device_scene(scene, d_scene);
+    printf("Scene copied to device.\n");
     
     glm::vec2 thread_size(8,8);
     dim3 blocks(image_width / thread_size.x + 1, image_height / thread_size.y + 1);
@@ -132,15 +137,22 @@ int main(int argc, char** argv){
     // 将来的にはparam fileから読めるようにしたい
     CameraParameter camera_param;
     camera_param.lower_left_corner = vec3(-1.0, -1.0, -1.0);
-    camera_param.horizontal = vec3(1.0, 0.0, 0.0);
-    camera_param.vertical = vec3(0.0, 1.0, 0.0);
-    camera_param.origin = vec3(0.0, 0.5, 1.5);
+    camera_param.horizontal = vec3(2.0, 0.0, 0.0);
+    camera_param.vertical = vec3(0.0, 2.0, 0.0);
+    camera_param.origin = vec3(1.5, 2.0, 3.5);
 
 
     for(int frame = 0; frame < num_frames; frame++){
         if(scene.scenario.size() > 2){
-            printf("Rendering frame %d / %d\n", frame + 1, num_frames);
+            printf("Rendering frame %d / %d\n", frame, num_frames);
+            
+            if(frame > 0){
+                dirty_leaves.clear();
+                modify_scene(scene, param, frame, dirty_leaves);
+                update_device_bvh(scene, d_scene);
+            }
             render_image<<<blocks, threads>>>(framebuffers, image_width, image_height, camera_param, d_scene, frame);
+
             CHECK_CUDA(cudaGetLastError());
             CHECK_CUDA(cudaDeviceSynchronize());
         }
@@ -149,12 +161,7 @@ int main(int argc, char** argv){
     export_to_ppm("/home/m5291093/cuda-gbvh/cuda-gbvh/build/results/f", framebuffers, image_width, image_height, num_frames);
 
     CHECK_CUDA(cudaFree(framebuffers));
-    CHECK_CUDA(cudaFree(d_scene->triangles));
-    CHECK_CUDA(cudaFree(d_scene->scenario));
-    CHECK_CUDA(cudaFree(d_scene->num_actions_at_frame));
-    CHECK_CUDA(cudaFree(d_scene->tree_buffer));
-    CHECK_CUDA(cudaFree(d_scene));
-
+    free_device_scene(d_scene);
     CHECK_CUDA(cudaDeviceReset());
 
 

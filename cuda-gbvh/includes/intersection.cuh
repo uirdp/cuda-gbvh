@@ -65,3 +65,32 @@ __device__ inline bool intersect_sphere(const Ray& ray, const vec3& center, floa
         return false;
     }
 }
+
+// AABB とレイの簡単な交差判定
+// AABB は vec3 min, max を持っている想定
+__device__ inline bool intersect_aabb(
+    const AABB& box,
+    const Ray& ray,
+    float t_min,
+    float t_max
+){
+    // glm::vec3 っぽい前提（.x, .y, .z フィールド）
+    const vec3 inv_dir = vec3(1.0f) / ray.direction;
+
+    float t0x = (box.vmin.x - ray.origin.x) * inv_dir.x;
+    float t1x = (box.vmax.x - ray.origin.x) * inv_dir.x;
+    float tmin = fminf(t0x, t1x);
+    float tmax = fmaxf(t0x, t1x);
+
+    float t0y = (box.vmin.y - ray.origin.y) * inv_dir.y;
+    float t1y = (box.vmax.y - ray.origin.y) * inv_dir.y;
+    tmin = fmaxf(tmin, fminf(t0y, t1y));
+    tmax = fminf(tmax, fmaxf(t0y, t1y));
+
+    float t0z = (box.vmin.z - ray.origin.z) * inv_dir.z;
+    float t1z = (box.vmax.z - ray.origin.z) * inv_dir.z;
+    tmin = fmaxf(tmin, fminf(t0z, t1z));
+    tmax = fminf(tmax, fmaxf(t0z, t1z));
+
+    return (tmax >= tmin) && (tmax >= t_min) && (tmin <= t_max);
+}

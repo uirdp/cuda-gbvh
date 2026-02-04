@@ -74,12 +74,12 @@ clean: CMakeFiles/cuda_gbvh.dir/clean
 CMakeFiles/cuda_gbvh.dir/all:
 	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/depend
 	$(MAKE) -f CMakeFiles/cuda_gbvh.dir/build.make CMakeFiles/cuda_gbvh.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target cuda_gbvh"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9 "Built target cuda_gbvh"
 .PHONY : CMakeFiles/cuda_gbvh.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/cuda_gbvh.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles 7
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles 9
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/cuda_gbvh.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/m5291093/cuda-gbvh/cuda-gbvh/build/CMakeFiles 0
 .PHONY : CMakeFiles/cuda_gbvh.dir/rule

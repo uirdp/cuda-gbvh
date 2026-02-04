@@ -1,0 +1,24 @@
+26/1/12
+seg faultはなくなった、けど絵が出てこないrendererが間違っているかbvhが間違っているflattenが間違っているかも
+解決した、ただしmodify sceneをすることでtriangle offsetの値がおかしくなっている
+（中でflatten nodeを呼んでいるため、modifyするたび大きくなってしまう）
+なのでflatten nodeの仕様を変える必要がある
+
+26/1/17
+Deleteが呼ばれるようになったが、objectが見つからない
+みつかった、triangleを更新する必要がある
+
+26/1/23
+並列化：gridにコードを割り振る→leafにコードを割り振る→gpuでagcする(ここまで２月中)→残りの部分と接続する
+→直列と計測する
+
+leafにセットするのはdeleteとinsertの二つでよいか聞く
+
+26/2/4
+gridにコード割り振る（済）
+leafにコードを割り振る（済）
+dirtyを集める（済）
+gpuに転送
+agc
+接続
+計測
