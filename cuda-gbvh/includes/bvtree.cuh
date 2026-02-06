@@ -110,8 +110,8 @@ struct GridNode : public GridNodeBase {
     float cost;
     bool is_dirty;
 
-    // uint64_t grid_code; // GBVHで使用
-    // uint8_t grid_bits;
+    uint64_t grid_code; // GBVHで使用
+    uint8_t grid_bits;
 
 public:
     GridNode() : node_alloc_buf(nullptr), is_dirty(true){
@@ -122,10 +122,10 @@ public:
     static int get_index(int x, int y, int z) { return (z* NDIV + y) * NDIV + x; }
     static int get_index(const glm::ivec3& idx) { return (idx.z * NDIV + idx.y) * NDIV + idx.x; }
 
-    // inline void set_code(uint64_t code, uint8_t bits){
-    //     this->grid_code = code;
-    //     this->grid_bits = bits;
-    // }
+    inline void set_code(uint64_t code, uint8_t bits){
+        this->grid_code = code;
+        this->grid_bits = bits;
+    }
 };
 
 // 葉ノード
@@ -141,8 +141,8 @@ struct LeafNode : public GridNodeBase {
     // 0 なら triangles_buf を使っている
     int allocated;
 
-    // uint64_t grid_code = 0;
-    // uint8_t  grid_bits = 0;
+    uint64_t grid_code = 0;
+    uint8_t  grid_bits = 0;
 
     static constexpr int SMALL_CAP = MAX_LEAF_SIZE;
     Triangle* tri_buf[SMALL_CAP];
@@ -172,10 +172,10 @@ struct LeafNode : public GridNodeBase {
         triangles[i] = *(Triangle*)obj;
     }
 
-    // inline void set_grid_code(uint64_t code, uint8_t bits) {
-    //     grid_code = code;
-    //     grid_bits = bits;
-    // }
+    inline void set_grid_code(uint64_t code, uint8_t bits) {
+        grid_code = code;
+        grid_bits = bits;
+    }
 
     // nobjs 個の triangle に十分な領域を割り当てる（必要なら）
     void allocate() {

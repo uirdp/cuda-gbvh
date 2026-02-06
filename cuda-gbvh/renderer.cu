@@ -23,7 +23,7 @@ __global__ void render_image(vec3* framebuffer, int image_width, int image_heigh
 
 void export_to_ppm(string filename, vec3* framebuffers, int image_width, int image_height, int num_frames){
 
-    for(int f = 0; f < num_frames; f++){
+    for(int f = 0; f < num_frames - 1; f++){
         string frame_filename = filename + "_" + std::to_string(f) + ".ppm";
         FILE* fp = fopen(frame_filename.c_str(), "wb");
         if(!fp){

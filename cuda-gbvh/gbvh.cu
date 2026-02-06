@@ -128,11 +128,11 @@ void insert_object(TreeNode *&node, Object *obj, int glevel)
 {
     TreeNode **np = &node;
 
-    // uint64_t path_code = 0;
-    // uint8_t path_bits = 0;
+    uint64_t path_code = 0;
+    uint8_t path_bits = 0;
 
-    // uint64_t parent_code = 0;
-    // uint8_t parent_bits = 0;
+    uint64_t parent_code = 0;
+    uint8_t parent_bits = 0;
 
     while (*np && (*np)->type == NT_GRID)
     {
@@ -145,11 +145,11 @@ void insert_object(TreeNode *&node, Object *obj, int glevel)
                                  NDIV_SHIFT * 3)) &
                   IDX_MASK;
 
-        // parent_code = path_code;
-        // parent_bits = path_bits;
+        parent_code = path_code;
+        parent_bits = path_bits;
 
-        // path_code = (path_code << GRID_BITS_PER_LEVEL) | (uint64_t)(idx);
-        // path_bits += GRID_BITS_PER_LEVEL;
+        path_code = (path_code << GRID_BITS_PER_LEVEL) | (uint64_t)(idx);
+        path_bits += GRID_BITS_PER_LEVEL;
                   
         np = &grid->cells[idx];
         glevel++;
@@ -160,7 +160,7 @@ void insert_object(TreeNode *&node, Object *obj, int glevel)
         // デフォルトでdirtyになっているはず
         LeafNode *leaf = new LeafNode();
         add_object_to_leaf(leaf, obj);
-        // leaf->set_grid_code(parent_code, parent_bits);
+        leaf->set_grid_code(parent_code, parent_bits);
         *np = leaf;
         // dirty_leaves.push_back(leaf);
     }
@@ -168,10 +168,11 @@ void insert_object(TreeNode *&node, Object *obj, int glevel)
     {
         LeafNode *leaf = (LeafNode *)*np;
         leaf->is_dirty = true;
+        // leaf->set_grid_code(parent_code, parent_bits);
         if (leaf->nobjs + 1 > MAX_LEAF_SIZE && glevel < MAX_GRID_LEVEL)
         {
             GridNode *grid = new GridNode();
-            // grid->set_code(path_code, path_bits);
+            grid->set_code(path_code, path_bits);
             for (int i = 0; i < leaf->nobjs; i++)
             {
                 Object *o = leaf->get_object(i);
@@ -213,7 +214,9 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel)
         else if (grid->nobjs <= MAX_LEAF_SIZE)
         {
             LeafNode *leaf = new LeafNode();
-            // leaf->set_grid_code(grid->grid_code, grid->grid_bits);
+            auto code = (grid->grid_code >> GRID_BITS_PER_LEVEL);
+            auto bits = grid->grid_bits - GRID_BITS_PER_LEVEL;
+            leaf->set_grid_code(code, bits);
             collect_objects(grid, leaf);
             destroy_tree(grid);
             node = leaf;
@@ -308,10 +311,10 @@ public:
 
         if (node == nullptr)
         {
-        //    GridNode* root = new GridNode();
-        //    // root->set_code(0, 0); 
-        //    node = (TreeNode*)root;
-            node = new GridNode();
+           GridNode* root = new GridNode();
+           // root->set_code(0, 0); 
+           node = (TreeNode*)root;
+            // node = new GridNode();
         }
 
         GridNode *grid = (GridNode *)node;
