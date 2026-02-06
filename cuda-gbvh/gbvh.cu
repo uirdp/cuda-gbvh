@@ -124,15 +124,15 @@ inline static CodeType get_hgrid_code(CodeType x, CodeType y, CodeType z)
 #endif
 }
 
-void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode*>& dirty_leaves)
+void insert_object(TreeNode *&node, Object *obj, int glevel)
 {
     TreeNode **np = &node;
 
-    uint64_t path_code = 0;
-    uint8_t path_bits = 0;
+    // uint64_t path_code = 0;
+    // uint8_t path_bits = 0;
 
-    uint64_t parent_code = 0;
-    uint8_t parent_bits = 0;
+    // uint64_t parent_code = 0;
+    // uint8_t parent_bits = 0;
 
     while (*np && (*np)->type == NT_GRID)
     {
@@ -145,11 +145,11 @@ void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode*>& 
                                  NDIV_SHIFT * 3)) &
                   IDX_MASK;
 
-        parent_code = path_code;
-        parent_bits = path_bits;
+        // parent_code = path_code;
+        // parent_bits = path_bits;
 
-        path_code = (path_code << GRID_BITS_PER_LEVEL) | (uint64_t)(idx);
-        path_bits += GRID_BITS_PER_LEVEL;
+        // path_code = (path_code << GRID_BITS_PER_LEVEL) | (uint64_t)(idx);
+        // path_bits += GRID_BITS_PER_LEVEL;
                   
         np = &grid->cells[idx];
         glevel++;
@@ -160,9 +160,9 @@ void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode*>& 
         // デフォルトでdirtyになっているはず
         LeafNode *leaf = new LeafNode();
         add_object_to_leaf(leaf, obj);
-        leaf->set_grid_code(parent_code, parent_bits);
+        // leaf->set_grid_code(parent_code, parent_bits);
         *np = leaf;
-        dirty_leaves.push_back(leaf);
+        // dirty_leaves.push_back(leaf);
     }
     else
     {
@@ -171,13 +171,13 @@ void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode*>& 
         if (leaf->nobjs + 1 > MAX_LEAF_SIZE && glevel < MAX_GRID_LEVEL)
         {
             GridNode *grid = new GridNode();
-            grid->set_code(path_code, path_bits);
+            // grid->set_code(path_code, path_bits);
             for (int i = 0; i < leaf->nobjs; i++)
             {
                 Object *o = leaf->get_object(i);
-                insert_object((TreeNode*&)grid, o, glevel, dirty_leaves);
+                insert_object((TreeNode*&)grid, o, glevel);
             }
-            insert_object((TreeNode*&)grid, obj, glevel, dirty_leaves);
+            insert_object((TreeNode*&)grid, obj, glevel);
             *np = (TreeNode*)grid;
             if (leaf->bvh_node)
                 destroy_tree(leaf->bvh_node);
@@ -186,25 +186,13 @@ void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode*>& 
         else
         {
             add_object_to_leaf(leaf, obj);
-            dirty_leaves.push_back(leaf);
+            // dirty_leaves.push_back(leaf);
         }
     }
 }
 
-static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode*>& dirty_leaves)
+static void delete_object(TreeNode *&node, Object *obj, int glevel)
 {
-
-    if (node == nullptr)
-    {
-        printf("Node is null, nothing to delete.\n");
-        return;
-    }
-
-    if (obj == nullptr)
-    {
-        printf("Object is null, cannot delete.\n");
-        return;
-    }
 
     if (node->type == NT_GRID)
     {
@@ -214,7 +202,7 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         int idx = (obj->code >> ((MAX_GRID_LEVEL - 1 - glevel) *
                                  NDIV_SHIFT * 3)) &
                   IDX_MASK;
-        delete_object(grid->cells[idx], obj, glevel + 1, dirty_leaves);
+        delete_object(grid->cells[idx], obj, glevel + 1);
         if (grid->nobjs == 0)
         {
             if (grid->node_alloc_buf)
@@ -225,11 +213,11 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         else if (grid->nobjs <= MAX_LEAF_SIZE)
         {
             LeafNode *leaf = new LeafNode();
-            leaf->set_grid_code(grid->grid_code, grid->grid_bits);
+            // leaf->set_grid_code(grid->grid_code, grid->grid_bits);
             collect_objects(grid, leaf);
             destroy_tree(grid);
             node = leaf;
-            dirty_leaves.push_back(leaf);
+            // dirty_leaves.push_back(leaf);
         }
     }
     else
@@ -237,19 +225,21 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         assert(node->type == NT_LEAF);
         LeafNode *leaf = (LeafNode *)node;
         delete_object_from_leaf(leaf, obj);
+
         leaf->is_dirty = true;
         if (leaf->nobjs == 0)
         {
             if (leaf->bvh_node)
                 destroy_tree(leaf->bvh_node);
+
             delete leaf;
             node = nullptr;
         }
 
-        else
-        {
-            dirty_leaves.push_back(leaf);
-        }
+        // else
+        // {
+        //     // dirty_leaves.push_back(leaf);
+        // }
     }
 }
 
@@ -312,29 +302,32 @@ public:
                       int start, 
                       int d_start, 
                       int end, 
-                      int glevel, 
-                      vector<LeafNode*>& dirty_leaves)
+                      int glevel
+                      )
     {
 
         if (node == nullptr)
         {
-           GridNode* root = new GridNode();
-           root->set_code(0, 0); 
-           node = (TreeNode*)root;
+        //    GridNode* root = new GridNode();
+        //    // root->set_code(0, 0); 
+        //    node = (TreeNode*)root;
+            node = new GridNode();
         }
 
         GridNode *grid = (GridNode *)node;
         ObjectInfo *infos = &obj_infos[0];
         // d_start から end までdeleteする
+        printf("Deleting objects from %d to %d\n", d_start, end);
         for (int i = d_start; i < end; i++)
         {
-            delete_object(node, (*objects)[infos[i].obj_id], glevel, dirty_leaves);
+            delete_object(node, (*objects)[infos[i].obj_id], glevel);
         }
         // start から d_start までinsertする
 
+        printf("Inserting objects from %d to %d\n", start, d_start);
         for (int i = start; i < d_start; i++)
         {
-            insert_object(node, (*objects)[infos[i].obj_id], glevel, dirty_leaves);
+            insert_object(node, (*objects)[infos[i].obj_id], glevel);
         }
     }
 };
@@ -347,7 +340,7 @@ void process_actions(TreeNode *&node,
                      vector<LeafNode*>& dirty_leaves)
 {
     GridBuilder builder(objects, action, cent_aabb, frame);
-    builder.build_serial(node, 0, builder.del_start, action.size(), 0, dirty_leaves); // これだと（多分）nodeがnullなため動かない
+    builder.build_serial(node, 0, builder.del_start, action.size(), 0); // これだと（多分）nodeがnullなため動かない
 }
 
 // agglomerative clustering

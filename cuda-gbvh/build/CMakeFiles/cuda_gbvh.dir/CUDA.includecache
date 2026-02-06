@@ -334,24 +334,6 @@ assert.h
 
 ../includes/external/opencv2/opencv_modules.hpp
 
-/home/m5291093/cuda-gbvh/cuda-gbvh/bvtree_common.cu
-includes/bvtree.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/gbvh.cu
-includes/bvtree.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
-includes/object.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
-includes/scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
-includes/external/glm/vec3.hpp
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
-vector
--
-alloca.h
--
-
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/aabb.h
 ray.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/ray.h

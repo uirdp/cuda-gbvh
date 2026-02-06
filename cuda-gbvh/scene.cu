@@ -271,6 +271,8 @@ void modify_scene(Scene &scene, InputParameter& param, int frame, vector<LeafNod
         scene.grid_root = nullptr;
     }
 
+    printf("Processing actions for frame %d...\n", frame);
     process_actions(scene.grid_root, scene.objects, scene.scenario[frame], scene.cent_aabb, frame, dirty_leaves);
+    printf("Building BVH for frame %d...\n", frame);
     scene.bvtree_root = build_bvh(scene.grid_root, scene.cent_aabb, 0).node;
 }

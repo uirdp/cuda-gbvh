@@ -147,8 +147,10 @@ int main(int argc, char** argv){
             printf("Rendering frame %d / %d\n", frame, num_frames);
             
             if(frame > 0){
-                dirty_leaves.clear();
+                // dirty_leaves.clear();
+                printf("Modifying scene for frame %d...\n", frame);
                 modify_scene(scene, param, frame, dirty_leaves);
+                printf("Updating device BVH for frame %d...\n", frame);
                 update_device_bvh(scene, d_scene);
             }
             render_image<<<blocks, threads>>>(framebuffers, image_width, image_height, camera_param, d_scene, frame);
