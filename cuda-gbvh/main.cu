@@ -1,6 +1,12 @@
 #include <iostream>
 #include <string.h>
 #include <cuda_runtime.h>
+#include <unordered_map>
+#include <map>
+#include <vector>
+#include <algorithm>
+#include <cstdio>
+#include <cstdint>
 
 #include "includes/external/glm/vec3.hpp"
 #include "includes/external/glm/vec2.hpp"
@@ -13,8 +19,47 @@
 
 #define DUMMY_REPEATS  2
 
-Statistics statistics;
+Statistics statistics; 
 
+enum BVHBuildDeviceType {
+    BUILD_TREE_CPU = 0,
+    BUILD_TREE_GPU
+};
+
+void print_max_grid_code(const std::vector<LeafNode*>& dirty_leaves)
+{
+    uint64_t max_code = 0;
+    uint8_t  max_bits = 0;
+    int max_index = -1;
+
+    // 下位6ビットを取り出すためのマスク
+    const uint64_t MASK = (1ULL << GRID_BITS_PER_LEVEL) - 1ULL; // = 0x3F
+
+    uint64_t max_last_level_bits = 0;
+
+    for (int i = 0; i < (int)dirty_leaves.size(); ++i)
+    {
+        LeafNode* leaf = dirty_leaves[i];
+        if (!leaf) continue;
+
+        uint64_t code = leaf->grid_code;
+        uint64_t last_bits = code & MASK;  // 下位6ビット
+
+        if (last_bits > max_last_level_bits)
+        {
+            max_last_level_bits = last_bits;
+            max_code = code;
+            max_bits = leaf->grid_bits;
+            max_index = i;
+        }
+    }
+
+    printf("max last-level bits = %llu (0x%llx), grid_bits=%u, at dirty_leaves[%d]\n",
+           (unsigned long long)max_last_level_bits,
+           (unsigned long long)max_last_level_bits,
+           (unsigned)max_bits,
+           max_index);
+}
 
 int main(int argc, char** argv){
     InputParameter param;
@@ -22,6 +67,7 @@ int main(int argc, char** argv){
     int nthreads = 0;
     bool interactive = false;
     std::string outfile;
+    BVHBuildDeviceType build_device = BUILD_TREE_GPU;
 
     /* 引数の解析 */
     while( argc >= 2 ) {
@@ -121,12 +167,32 @@ int main(int argc, char** argv){
     glm::vec2 resolution(image_width, image_height);
 
     vector<LeafNode*> dirty_leaves;
-    build_initial_tree(scene, param, 0, dirty_leaves);
-    printf("Initial tree built.\n");
+    if(build_device == BUILD_TREE_CPU){
+        build_initial_tree(scene, param, 0, dirty_leaves);
+        printf("Initial tree built.\n");
+    } else {
+        build_initial_grid(scene, param, 0, dirty_leaves);
+    }
+
+
+    // ここは無駄、build_initialの中ではやるべきでないが、面倒くさいのでいったんこうしてる
+    dirty_leaves.clear();
+    // dirty leavesの収集
+    collect_dirty_leaves(scene.grid_root, dirty_leaves);
+    // debug_print_dirty_leaf_distribution(dirty_leaves);
+    // debug_print_code_range_per_bits(dirty_leaves);
+    print_max_grid_code(dirty_leaves);
+    scene.dirty_leaves = dirty_leaves;
     
     DeviceScene* d_scene;
-    copy_scene_to_device_scene(scene, d_scene);
+    DeviceScene h_device_scene{};
+    copy_scene_to_device_scene(scene, d_scene, h_device_scene);
     printf("Scene copied to device.\n");
+
+    if(build_device == BUILD_TREE_GPU){
+        build_initial_bvh_gpu(d_scene, h_device_scene, 0);
+        printf("Initial BVH built on GPU.\n");
+    }
     
     glm::vec2 thread_size(8,8);
     dim3 blocks(image_width / thread_size.x + 1, image_height / thread_size.y + 1);
@@ -142,17 +208,30 @@ int main(int argc, char** argv){
     camera_param.origin = vec3(1.5, 2.0, 3.5);
 
 
-    for(int frame = 0; frame < num_frames; frame++){
+    for(int frame = 0; frame < 0; frame++){
         if(scene.scenario.size() > 2){
             printf("Rendering frame %d / %d\n", frame, num_frames);
             
+            // if(frame > 0){
+            //     // dirty_leaves.clear();
+            //     modify_scene(scene, param, frame, dirty_leaves);
+            //     dirty_leaves.clear();
+            //     collect_dirty_leaves(scene.grid_root, dirty_leaves);
+            //     scene.dirty_leaves = dirty_leaves;
+            //     update_device_bvh(scene, d_scene);
+            //     // sort_dirty_leaves_by_grid_code(d_scene->dirty_leaves, d_scene->num_dirty_leaves);
+            // }
+
             if(frame > 0){
-                // dirty_leaves.clear();
-                printf("Modifying scene for frame %d...\n", frame);
-                modify_scene(scene, param, frame, dirty_leaves);
-                printf("Updating device BVH for frame %d...\n", frame);
-                update_device_bvh(scene, d_scene);
+                // CPUでグリッド木を更新
+                update_grid_tree(scene, param, frame, dirty_leaves);
+                dirty_leaves.clear();
+                // dirty leavesの収集、いったんすべてのleafをdirtyとして扱う
+                collect_dirty_leaves(scene.grid_root, dirty_leaves);
+                scene.dirty_leaves = dirty_leaves;
+                update_bvh_gpu(d_scene, h_device_scene, scene, 0);
             }
+
             render_image<<<blocks, threads>>>(framebuffers, image_width, image_height, camera_param, d_scene, frame);
 
             CHECK_CUDA(cudaGetLastError());
@@ -170,3 +249,6 @@ int main(int argc, char** argv){
     // print_frame_buffer(framebuffers, image_width, image_height, num_frames);
     return 0;
 }
+
+
+

@@ -13,49 +13,82 @@ struct AABB {
     vec3 vmin;
     vec3 vmax;
 
+    __host__ __device__
     AABB() {
         vmin = vec3( std::numeric_limits<float>::infinity());
         vmax = vec3(-std::numeric_limits<float>::infinity());
     }
 
+    __host__ __device__
     AABB(const vec3& min, const vec3& max) : vmin(min), vmax(max) {}
 
     // ここら辺はcudaでも実装しないとだめ
     // kernel_compute_surface();
 
-    float surface_area() const {
-    #ifdef CPU_PARALLEL
+    __host__ __device__ float surface_area() const {
+#ifdef CPU_PARALLEL
         if(embree::any(embree::lt_mask(vmax, vmin))) return 0.0f;
         embree::Vec3fa d = vmax - vmin;
         return embree::halfArea(d);
-    #else 
+#else 
         if (vmax.x < vmin.x || vmax.y < vmin.y || vmax.z < vmin.z) return 0.0f;
         vec3 d = vmax - vmin;
         return 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
-    #endif
+#endif
     }
 
-    float length() const {
-    #ifdef CPU_PARALLEL
-        return reduce_max(vmax - vmin);
-    #else
+    __host__ __device__ float length() const {
+    #ifdef __CUDA_ARCH__
         vec3 d = vmax - vmin;
-        return std::max(d.x, std::max(d.y, d.z));
+        return fmaxf(d.x, fmaxf(d.y, d.z));
+    #else
+        #ifdef CPU_PARALLEL
+            return reduce_max(vmax - vmin);
+        #else
+            vec3 d = vmax - vmin;
+            return std::max(d.x, std::max(d.y, d.z));
+        #endif
     #endif
     }
 
+    __host__ __device__
     void insert(const vec3& point){
+#ifdef __CUDA_ARCH__
+        // device
+        vmin.x = fminf(vmin.x, point.x);
+        vmin.y = fminf(vmin.y, point.y);
+        vmin.z = fminf(vmin.z, point.z);
+
+        vmax.x = fmaxf(vmax.x, point.x);
+        vmax.y = fmaxf(vmax.y, point.y);
+        vmax.z = fmaxf(vmax.z, point.z);
+#else
+        // host
         vmin = glm::min(vmin, point);
         vmax = glm::max(vmax, point);
+#endif
     }
 
-    void insert(const AABB & aabb){
+    __host__ __device__
+    void insert(const AABB& aabb){
+#ifdef __CUDA_ARCH__
+        // device
+        vmin.x = fminf(vmin.x, aabb.vmin.x);
+        vmin.y = fminf(vmin.y, aabb.vmin.y);
+        vmin.z = fminf(vmin.z, aabb.vmin.z);
+
+        vmax.x = fmaxf(vmax.x, aabb.vmax.x);
+        vmax.y = fmaxf(vmax.y, aabb.vmax.y);
+        vmax.z = fmaxf(vmax.z, aabb.vmax.z);
+#else
+        // host
         vmin = glm::min(vmin, aabb.vmin);
         vmax = glm::max(vmax, aabb.vmax);
+#endif
     }
 
     /* 誤差余裕をもった少し大きな AABB を返す */
-    AABB dilate() const {
+    __host__ __device__ AABB dilate() const {
         float d = this->length() * EPSILON_AABB;
         return AABB(vmin - vec3(d), vmax + vec3(d));
     }
@@ -76,10 +109,14 @@ struct AABB {
         return buf;
     }
 
-    static AABB merge(const AABB b0, const AABB b1) {
-        return AABB(
-            glm::min(b0.vmin, b1.vmin),
-            glm::max(b0.vmax, b1.vmax)
-        );
+    __host__ __device__ static AABB merge(const AABB a, const AABB b) {
+        AABB m;
+        m.vmin.x = fminf(a.vmin.x, b.vmin.x);
+        m.vmin.y = fminf(a.vmin.y, b.vmin.y);
+        m.vmin.z = fminf(a.vmin.z, b.vmin.z);
+        m.vmax.x = fmaxf(a.vmax.x, b.vmax.x);
+        m.vmax.y = fmaxf(a.vmax.y, b.vmax.y);
+        m.vmax.z = fmaxf(a.vmax.z, b.vmax.z);
+        return m;
     }
 };

@@ -334,24 +334,6 @@ assert.h
 
 ../includes/external/opencv2/opencv_modules.hpp
 
-/home/m5291093/cuda-gbvh/cuda-gbvh/bvtree_common.cu
-includes/bvtree.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/gbvh.cu
-includes/bvtree.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
-includes/object.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
-includes/scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
-includes/external/glm/vec3.hpp
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
-vector
--
-alloca.h
--
-
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/aabb.h
 ray.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/ray.h
@@ -384,6 +366,12 @@ cuda_runtime.h
 limits
 -
 vector
+-
+thrust/sort.h
+-
+thrust/device_ptr.h
+-
+thrust/execution_policy.h
 -
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/check_cuda.h
@@ -1619,6 +1607,18 @@ string.h
 -
 cuda_runtime.h
 -
+unordered_map
+-
+map
+-
+vector
+-
+algorithm
+-
+cstdio
+-
+cstdint
+-
 includes/external/glm/vec3.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
 includes/external/glm/vec2.hpp
@@ -1635,12 +1635,4 @@ includes/renderer.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
 includes/utility.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/utility.h
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/renderer.cu
-includes/renderer.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/scene.cu
-includes/scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
 

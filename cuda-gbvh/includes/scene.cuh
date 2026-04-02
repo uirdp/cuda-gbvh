@@ -36,6 +36,7 @@ using std::map;
 using glm::vec3;
 
 struct TreeNode;
+struct LeafNode;
 
 struct Scene {
     vector<Object*> objects;               //　全フレーム分のオブジェクト
@@ -46,6 +47,7 @@ struct Scene {
     TreeNode *bvtree_root;
     TreeNode *grid_root;
     void *tree_buffer;
+    vector<LeafNode*> dirty_leaves;
 
     std::vector<std::vector<Action>> scenario; //　ここら辺もポインタに変更しないといけない
     std::vector<std::vector<ViewAction>> view_scenario;
@@ -85,21 +87,43 @@ struct Scene {
 
 struct GPU_BVH_Node;
 struct GPU_LeafNode;
+struct GPU_Cluster;
 // __device__側のコードではvectorやmapが使えないので、Sceneをdeviceに送る際は一度SceneをDeviceSceneに変更する
 struct DeviceScene{
     Triangle* triangles;
-    GPU_BVH_Node* bvh_nodes;
+    int num_triangles;
+
     GPU_LeafNode* bvh_leaves;
+    GPU_LeafNode* dirty_leaves;
+    int num_dirty_leaves;  
+    
+    GPU_BVH_Node* prev_bvh_nodes;
+    int* num_prev_bvh_nodes;
+    int prev_bvh_root_node_idx;
+
+    GPU_Cluster *clusters;
+    int num_clusters;
+
+    GPU_BVH_Node* bvh_nodes;
+    int bvh_node_capacity;
+    int* num_bvh_nodes;
+
+    GPU_BVH_Node* prev_bvh_nodes;
+    int* num_prev_bvh_nodes;
+    int* prev_bvh_root_node_idx;
+
+    GPU_BVH_Node* curr_build_nodes;
+    int* num_curr_build_nodes;
+    
+    int bvh_root_node_idx;
     int bvh_root;
-    int num_bvh_nodes;
     int num_bvh_leaves;
 
-    int num_triangles;
-    int* num_actions_at_frame;     // 各フレームのアクションのサイズ
-    int max_num_actions; // Scenarioの中で最も大きいAction配列のサイズ max(scenario[frame].size())
 
 
     Action* scenario; 
+    int* num_actions_at_frame;     // 各フレームのアクションのサイズ
+    int max_num_actions; // Scenarioの中で最も大きいAction配列のサイズ max(scenario[frame].size())
 
     DeviceScene() : bvh_nodes(nullptr), bvh_leaves(nullptr), bvh_root(-1), num_bvh_nodes(0), num_bvh_leaves(0) {}
     ~DeviceScene() {
@@ -133,12 +157,15 @@ __device__ inline int get_num_triangles_at_frame(const DeviceScene* scene, int f
     return scene->num_actions_at_frame[frame];
 }
 
-struct LeafNode;
 
-void copy_scene_to_device_scene(Scene& scene, DeviceScene*& d_scene);
+
+void copy_scene_to_device_scene(Scene& scene, DeviceScene*& d_scene, DeviceScene& h_device_scene);
 void free_device_scene(DeviceScene* d_scene);
 
 static void calc_scene_aabb(vector<Object*>& objects, AABB& scene_aabb, AABB &cent_aabb);
 void build_initial_tree(Scene& scene, InputParameter& param, int frame, vector<LeafNode*>& dirty_leaves);
+void build_initial_grid(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves);
 void modify_scene(Scene &scene, InputParameter& param, int frame, vector<LeafNode*>& dirty_leaves);
 void update_device_bvh(const Scene& scene, DeviceScene* d_scene);
+void update_grid_tree(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves);
+void update_bvh_gpu(DeviceScene* d_scene, DeviceScene& h_scene, Scene& scene, cudaStream_t stream);

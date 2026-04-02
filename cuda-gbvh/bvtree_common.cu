@@ -14,8 +14,18 @@ int flatten_node(TreeNode* node, FlattenContext& ctx){
 
         GPU_LeafNode gpu_leaf;
         gpu_leaf.aabb = leaf->aabb;
+        gpu_leaf.grid_code = leaf->grid_code;
+        gpu_leaf.grid_bits = leaf->grid_bits;
         gpu_leaf.tri_offset = ctx.triangles.size();
         gpu_leaf.tri_count = leaf->nobjs;
+
+        for(int i = 0; i < MAX_LEAF_SIZE; ++i){
+            gpu_leaf.triangles[i] = leaf->triangles[i];
+        }
+
+        if(leaf->is_dirty){
+            ctx.dirty_leaves.push_back(gpu_leaf);
+        }
 
         // printf("Triangle offset: %d, count: %d\n", gpu_leaf.tri_offset, gpu_leaf.tri_count);
         // printf("triangle size before adding: %zu\n", ctx.triangles.size());
@@ -27,24 +37,27 @@ int flatten_node(TreeNode* node, FlattenContext& ctx){
         int leaf_idx = ctx.leaves.size();
         ctx.leaves.push_back(gpu_leaf);
 
-        ctx.nodes[node_idx] = {
-            .aabb = leaf->aabb,
-            .left = -1,
-            .right = -1,
-            .leaf = leaf_idx
-        };
+        ctx.nodes[node_idx] = GPU_BVH_Node{};
+        ctx.nodes[node_idx].aabb = leaf->aabb;
+        ctx.nodes[node_idx].leaf = leaf_idx;
+
     } else if(node->type == NT_BRANCH){
         BVH_Node* bvh = (BVH_Node*)node;
 
         int left = flatten_node(bvh->left, ctx);
         int right = flatten_node(bvh->right, ctx);
 
-        ctx.nodes[node_idx] = {
-            .aabb = AABB::merge(bvh->aabbs[0], bvh->aabbs[1]),
-            .left = left,
-            .right = right,
-            .leaf = -1
-        };
+        // ctx.nodes[node_idx] = {
+        //     .aabb = AABB::merge(bvh->aabbs[0], bvh->aabbs[1]),
+        //     .left = left,
+        //     .right = right,
+        //     .leaf = -1
+        // };
+
+        ctx.nodes[node_idx] = GPU_BVH_Node{};
+        ctx.nodes[node_idx].aabb = AABB::merge(bvh->aabbs[0], bvh->aabbs[1]);
+        ctx.nodes[node_idx].left = left;
+        ctx.nodes[node_idx].right = right;
     } else {
         GridNode* grid = (GridNode*)node;
         if (grid->bvh_node) {

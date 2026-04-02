@@ -129,11 +129,32 @@ public:
         return 0.5f / inv_area;
     }
 
-    AABB get_aabb() const {
-        vec3 vmin = glm::min(glm::min(vertex(0), vertex(1)), vertex(2));
-        vec3 vmax = glm::max(glm::max(vertex(0), vertex(1)), vertex(2));
-        return AABB(vmin, vmax);
-    }
+__host__ __device__ AABB get_aabb() const {
+#ifdef __CUDA_ARCH__
+    // -------- device --------
+    vec3 v0 = vertex(0);
+    vec3 v1 = vertex(1);
+    vec3 v2 = vertex(2);
+
+    vec3 vmin, vmax;
+
+    vmin.x = fminf(fminf(v0.x, v1.x), v2.x);
+    vmin.y = fminf(fminf(v0.y, v1.y), v2.y);
+    vmin.z = fminf(fminf(v0.z, v1.z), v2.z);
+
+    vmax.x = fmaxf(fmaxf(v0.x, v1.x), v2.x);
+    vmax.y = fmaxf(fmaxf(v0.y, v1.y), v2.y);
+    vmax.z = fmaxf(fmaxf(v0.z, v1.z), v2.z);
+
+    return AABB(vmin, vmax);
+
+#else
+    // -------- host --------
+    vec3 vmin = glm::min(glm::min(vertex(0), vertex(1)), vertex(2));
+    vec3 vmax = glm::max(glm::max(vertex(0), vertex(1)), vertex(2));
+    return AABB(vmin, vmax);
+#endif
+}
 
     std::pair<float, float> get_span(int axis) const {
         float min_val = glm::min(glm::min(vertex(0)[axis], vertex(1)[axis]), vertex(2)[axis]);
@@ -227,7 +248,7 @@ inline vec2 Object::get_texture_coord_at_intersection(const Ray& ray,
 inline bool Object::get_surface_normal(vec3& normal) const {
     return ((Triangle*)this)->get_surface_normal(normal);
 }
-inline AABB Object::get_aabb() const {
+inline __host__ __device__ AABB Object::get_aabb() const {
     return ((Triangle*)this)->get_aabb();
 }
 inline std::pair<float, float> Object::get_span(int axis) const {

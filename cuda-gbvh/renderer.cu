@@ -83,7 +83,30 @@ __device__ vec3 closest_hit(Ray ray, Intersection isect){
     return isect.obj->get_normal_at_intersection(ray, isect.t, isect.uv) * 0.5f + vec3(0.5f, 0.5f, 0.5f);
 }
 
-__device__ bool find_intersection_bvh(
+__device__ bool intersect_leaf(
+    const GPU_LeafNode& leaf,
+    const Ray& ray,
+    Intersection& itsc,
+    float t_min,
+    float& closest_t
+){
+    bool hit_any = false;
+
+    for(int i = 0; i < leaf.tri_count; ++i){
+        const Triangle* tri = &leaf.triangles[i];
+
+        Intersection cand;
+        if(intersect_triangle(ray, tri, cand, t_min, closest_t)){
+            closest_t = cand.t;
+            itsc = cand;
+            hit_any = true;
+        }
+    }
+
+    return hit_any;
+}
+
+__device__ bool find_intersection_bvh_cpu(
     const DeviceScene* d_scene,
     const Ray& ray,
     Intersection& itsc,
@@ -153,6 +176,85 @@ __device__ bool find_intersection_bvh(
     return hit_any;
 }
 
+__device__ bool find_intersection_bvh(
+    const DeviceScene* d_scene,
+    const Ray& ray,
+    Intersection& itsc,
+    float t_min,
+    float t_max
+){
+    const GPU_BVH_Node* nodes  = d_scene->bvh_nodes;
+    const GPU_LeafNode* leaves = d_scene->dirty_leaves;
+
+    int stack[64];
+    int sp = 0;
+
+    bool hit_any = false;
+    float closest_t = t_max;
+
+    int root = d_scene->bvh_root_node_idx;
+    // printf("Starting BVH traversal from root node %d\n", root);
+    if(root < 0) return false;
+
+    stack[sp++] = root;
+
+    while(sp > 0){
+        if(sp >= 64) return hit_any;  // 念のため
+
+        int node_idx = stack[--sp];
+        const GPU_BVH_Node& node = nodes[node_idx];
+
+        // node AABB で cull
+        if(!intersect_aabb(node.aabb, ray, t_min, closest_t))
+            continue;
+
+        // -------------------------
+        // left child
+        // -------------------------
+        if(node.left_type == GPU_CHILD_LEAF){
+            // printf("Checking leaf node %d\n", node.left_idx);
+            if(node.left_idx >= 0){
+                const GPU_LeafNode& leaf = leaves[node.left_idx];
+
+                // leaf AABB があるならここでも cull できる
+                if(intersect_aabb(leaf.aabb, ray, t_min, closest_t)){
+                    if(intersect_leaf(leaf, ray, itsc, t_min, closest_t)){
+                        hit_any = true;
+                    }
+                }
+            }
+        }
+        else { // GPU_CHILD_NODE
+            if(node.left_idx >= 0){
+                if(sp < 64) stack[sp++] = node.left_idx;
+            }
+        }
+
+        // -------------------------
+        // right child
+        // -------------------------
+        if(node.right_type == GPU_CHILD_LEAF){
+            // printf("Checking leaf node %d\n", node.right_idx);
+            if(node.right_idx >= 0){
+                const GPU_LeafNode& leaf = leaves[node.right_idx];
+
+                if(intersect_aabb(leaf.aabb, ray, t_min, closest_t)){
+                    if(intersect_leaf(leaf, ray, itsc, t_min, closest_t)){
+                        hit_any = true;
+                    }
+                }
+            }
+        }
+        else { // GPU_CHILD_NODE
+            if(node.right_idx >= 0){
+                if(sp < 64) stack[sp++] = node.right_idx;
+            }
+        }
+    }
+
+    return hit_any;
+}
+
 __device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int frame){
     Intersection isect(FLT_MAX);
 
@@ -168,7 +270,7 @@ __device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int frame){
     if (hit) {
         color = closest_hit(ray, isect);
     } else {
-        color = vec3(0.0f, 1.0f, 0.0f);
+        color = vec3(0.0f, 0.0f, 0.7f);
     }
 
     return color;

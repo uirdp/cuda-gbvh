@@ -1,0 +1,65 @@
+build_agc:
+  
+  while c > 1 do
+    
+    for i = 0 to c - 1 in parallel do
+        d_min = inf
+
+
+clusters = d_dirty_leaves; 
+find_nn:
+    this_cluster_index = launch_index;
+    this_cluster = clusters[this_cluster_index]
+    
+    for i = 0 to inf
+        c1 = clusters[this_cluster_index + i]
+        c2 = clusters[this_cluster_index - i]
+
+        if both c1 and c2's grid_code != this_cluster.grid_code 
+            end for loop
+
+        if this_cluster.grid_code == c1.grid_code && sufaceArea(c1.aabb, this_cluster.aabb) < d_min
+            d_min = sufaceArea(c1.aabb, this_cluster.aabb)
+            Neighbours[i] = this_cluster_index + i
+        if this_cluster.grid_code == c2.grid_code && sufaceArea(c2.aabb, this_cluster.aabb) < d_min
+            d_min = surfaceArea(c2.aabb, this_cluster.aabb)
+            Neightbours[i] = this_cluster_index - if
+
+clusters = d_dirty_leaves
+find_affected_clusters
+    c = clusters[launch_index]
+    affected_clusters.add(c)    // dirty leaves and clusters itself is "affected clusters"
+
+    // find parent node in previous frame's bvh
+    parent_grid_code = c.grid_code >> BITS_PER_LEVEL    // retrive parent's grid grid_code
+    parent_cluster = pointers_to_previous_bvh[parent_grid_code]
+
+    // find children of parent clusters
+    for i to amount of children of the parent_cluster
+        if parent_cluster[i] is not dirty              // for dirty clusters are already in the list
+            affected.clusters.add(parent_cluster[i])
+
+
+
+is_grid_dirty(NDIV*NDIV*NDIV)
+is_grid_dirty.initialize(false)
+
+dirtyにするときに
+is_grid_dirty[grid_code] = true
+
+
+c = clusters[i]
+
+if grid_code_count[c.grid_code] == 1 then   // もし同じコードのクラスターがほかになければ
+    lift(c)
+
+//　これだと、例えば0001と00011100の二つのクラスターがあった場合、grid_code_cout[0001]は１だが、
+//  前者は後者が上がってくるのを待機しなければならない（liftしてはいけない）
+
+
+
+        
+
+
+    
+
