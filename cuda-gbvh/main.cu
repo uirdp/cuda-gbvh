@@ -16,6 +16,7 @@
 #include "includes/statistics.h"
 #include "includes/renderer.cuh"
 #include "includes/utility.h"
+#include "includes/bvtree.cuh"
 
 #define DUMMY_REPEATS  2
 
@@ -26,39 +27,155 @@ enum BVHBuildDeviceType {
     BUILD_TREE_GPU
 };
 
-void print_max_grid_code(const std::vector<LeafNode*>& dirty_leaves)
+static void debug_print_dirty_leaf_distribution(const std::vector<LeafNode*>& dirty_leaves)
 {
-    uint64_t max_code = 0;
-    uint8_t  max_bits = 0;
-    int max_index = -1;
+    printf("========== dirty_leaves distribution ==========\n");
+    printf("num dirty leaves = %zu\n", dirty_leaves.size());
 
-    // 下位6ビットを取り出すためのマスク
-    const uint64_t MASK = (1ULL << GRID_BITS_PER_LEVEL) - 1ULL; // = 0x3F
+    // bitsごとの個数
+    std::map<int, int> bits_count;
 
-    uint64_t max_last_level_bits = 0;
+    // (bits, code) ごとの個数
+    struct Key {
+        uint64_t code;
+        uint8_t bits;
 
-    for (int i = 0; i < (int)dirty_leaves.size(); ++i)
-    {
+        bool operator==(const Key& other) const {
+            return code == other.code && bits == other.bits;
+        }
+    };
+
+    struct KeyHash {
+        size_t operator()(const Key& k) const {
+            // 雑でも十分
+            return std::hash<uint64_t>()(k.code) ^ (std::hash<int>()((int)k.bits) << 1);
+        }
+    };
+
+    std::unordered_map<Key, int, KeyHash> key_count;
+
+    // bitsごとの code 分布
+    std::map<int, std::unordered_map<uint64_t, int>> code_count_per_bits;
+
+    int null_count = 0;
+
+    for (size_t i = 0; i < dirty_leaves.size(); ++i) {
         LeafNode* leaf = dirty_leaves[i];
-        if (!leaf) continue;
+        if (!leaf) {
+            null_count++;
+            continue;
+        }
 
+        int bits = (int)leaf->grid_bits;
         uint64_t code = leaf->grid_code;
-        uint64_t last_bits = code & MASK;  // 下位6ビット
 
-        if (last_bits > max_last_level_bits)
-        {
-            max_last_level_bits = last_bits;
-            max_code = code;
-            max_bits = leaf->grid_bits;
-            max_index = i;
+        bits_count[bits]++;
+
+        Key k{code, (uint8_t)bits};
+        key_count[k]++;
+
+        code_count_per_bits[bits][code]++;
+    }
+
+    if (null_count > 0) {
+        printf("WARNING: null dirty leaves = %d\n", null_count);
+    }
+
+    printf("\n-- bits histogram --\n");
+    for (auto& kv : bits_count) {
+        printf("bits=%d : count=%d\n", kv.first, kv.second);
+    }
+
+    printf("\n-- per bits unique code counts --\n");
+    for (auto& kv : code_count_per_bits) {
+        int bits = kv.first;
+        auto& mp = kv.second;
+        printf("bits=%d : unique_codes=%zu\n", bits, mp.size());
+    }
+
+    printf("\n-- duplicated (bits, code) groups --\n");
+    int num_dup_groups = 0;
+    int max_group_size = 0;
+    Key max_key{0, 0};
+
+    for (auto& kv : key_count) {
+        const Key& k = kv.first;
+        int cnt = kv.second;
+        if (cnt > 1) {
+            printf("bits=%u code=%llu count=%d\n",
+                   (unsigned)k.bits,
+                   (unsigned long long)k.code,
+                   cnt);
+            num_dup_groups++;
+
+            if (cnt > max_group_size) {
+                max_group_size = cnt;
+                max_key = k;
+            }
         }
     }
 
-    printf("max last-level bits = %llu (0x%llx), grid_bits=%u, at dirty_leaves[%d]\n",
-           (unsigned long long)max_last_level_bits,
-           (unsigned long long)max_last_level_bits,
-           (unsigned)max_bits,
-           max_index);
+    if (num_dup_groups == 0) {
+        printf("No duplicated (bits, code) groups found.\n");
+    } else {
+        printf("num duplicated groups = %d\n", num_dup_groups);
+        printf("max duplicated group = (bits=%u, code=%llu), count=%d\n",
+               (unsigned)max_key.bits,
+               (unsigned long long)max_key.code,
+               max_group_size);
+    }
+
+    printf("\n-- sample dirty leaves (first 32) --\n");
+    for (size_t i = 0; i < dirty_leaves.size() && i < 32; ++i) {
+        LeafNode* leaf = dirty_leaves[i];
+        if (!leaf) {
+            printf("[%zu] null\n", i);
+            continue;
+        }
+
+        printf("[%zu] bits=%u code=%llu nobjs=%d is_dirty=%d\n",
+               i,
+               (unsigned)leaf->grid_bits,
+               (unsigned long long)leaf->grid_code,
+               leaf->nobjs,
+               (int)leaf->is_dirty);
+    }
+
+    printf("==============================================\n");
+}
+
+static void debug_print_code_range_per_bits(const std::vector<LeafNode*>& dirty_leaves)
+{
+    std::map<int, uint64_t> min_code;
+    std::map<int, uint64_t> max_code;
+    std::map<int, bool> initialized;
+
+    for (LeafNode* leaf : dirty_leaves) {
+        if (!leaf) continue;
+
+        int bits = (int)leaf->grid_bits;
+        uint64_t code = leaf->grid_code;
+
+        if (!initialized[bits]) {
+            min_code[bits] = code;
+            max_code[bits] = code;
+            initialized[bits] = true;
+        } else {
+            min_code[bits] = std::min(min_code[bits], code);
+            max_code[bits] = std::max(max_code[bits], code);
+        }
+    }
+
+    printf("\n-- code range per bits --\n");
+    for (auto& kv : initialized) {
+        int bits = kv.first;
+        if (!kv.second) continue;
+
+        printf("bits=%d : min_code=%llu max_code=%llu\n",
+               bits,
+               (unsigned long long)min_code[bits],
+               (unsigned long long)max_code[bits]);
+    }
 }
 
 int main(int argc, char** argv){
@@ -167,30 +284,31 @@ int main(int argc, char** argv){
     glm::vec2 resolution(image_width, image_height);
 
     vector<LeafNode*> dirty_leaves;
+    DirtyKeySet dirty_keys;
     if(build_device == BUILD_TREE_CPU){
-        build_initial_tree(scene, param, 0, dirty_leaves);
+        build_initial_tree(scene, param, 0, dirty_leaves, dirty_keys);
         printf("Initial tree built.\n");
     } else {
-        build_initial_grid(scene, param, 0, dirty_leaves);
+        build_initial_grid(scene, param, 0, dirty_leaves, dirty_keys);
     }
 
+    vector<ulonglong2> h_dirty_keys = build_sorted_dirty_keys_from_set(dirty_keys);
 
-    // ここは無駄、build_initialの中ではやるべきでないが、面倒くさいのでいったんこうしてる
+
+    // ここ修正案件、どうせclearするならbuild_initial_gridに渡さなくてよい
     dirty_leaves.clear();
     // dirty leavesの収集
     collect_dirty_leaves(scene.grid_root, dirty_leaves);
-    // debug_print_dirty_leaf_distribution(dirty_leaves);
-    // debug_print_code_range_per_bits(dirty_leaves);
-    print_max_grid_code(dirty_leaves);
     scene.dirty_leaves = dirty_leaves;
     
     DeviceScene* d_scene;
     DeviceScene h_device_scene{};
-    copy_scene_to_device_scene(scene, d_scene, h_device_scene);
+    // sceneをGPU用の構造体にコピーしてGPUに転送
+    copy_scene_to_device_scene(scene, d_scene, h_device_scene, h_dirty_keys);
     printf("Scene copied to device.\n");
 
     if(build_device == BUILD_TREE_GPU){
-        build_initial_bvh_gpu(d_scene, h_device_scene, 0);
+        build_initial_bvh_gpu(scene, d_scene, h_device_scene, 0, h_dirty_keys);
         printf("Initial BVH built on GPU.\n");
     }
     
@@ -208,7 +326,7 @@ int main(int argc, char** argv){
     camera_param.origin = vec3(1.5, 2.0, 3.5);
 
 
-    for(int frame = 0; frame < 0; frame++){
+    for(int frame = 0; frame < num_frames; frame++){
         if(scene.scenario.size() > 2){
             printf("Rendering frame %d / %d\n", frame, num_frames);
             
@@ -223,17 +341,19 @@ int main(int argc, char** argv){
             // }
 
             if(frame > 0){
+                dirty_keys.clear();
                 // CPUでグリッド木を更新
-                update_grid_tree(scene, param, frame, dirty_leaves);
+                update_grid_tree(scene, param, frame, dirty_leaves, dirty_keys);
+                h_dirty_keys = build_sorted_dirty_keys_from_set(dirty_keys);
                 dirty_leaves.clear();
                 // dirty leavesの収集、いったんすべてのleafをdirtyとして扱う
                 collect_dirty_leaves(scene.grid_root, dirty_leaves);
                 scene.dirty_leaves = dirty_leaves;
-                update_bvh_gpu(d_scene, h_device_scene, scene, 0);
+                update_bvh_gpu(d_scene, h_device_scene, scene, h_dirty_keys, 0);
             }
 
             render_image<<<blocks, threads>>>(framebuffers, image_width, image_height, camera_param, d_scene, frame);
-
+            promote_curr_to_prev(h_device_scene);
             CHECK_CUDA(cudaGetLastError());
             CHECK_CUDA(cudaDeviceSynchronize());
         }

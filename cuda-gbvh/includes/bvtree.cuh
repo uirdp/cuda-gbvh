@@ -1,6 +1,7 @@
 #pragma once
 
 #include "object.cuh"
+#include "keys.h"
 // #include "embree/kernels/bvh/bvh.h"
 // #include "embree/common/math/vec3fa.h"
 // #include "embree/kernels/geometry/triangle.h"
@@ -13,6 +14,7 @@
 
 #include <cuda_runtime.h>
 #include <limits>
+#include <unordered_set>
 #include <vector>
 
 #include <thrust/sort.h>
@@ -97,11 +99,15 @@ struct GPU_BVH_Node {
     int right;
     int leaf;
 
+    uint64_t grid_code;
+    uint8_t grid_bits;
+
     __host__ __device__
     GPU_BVH_Node()
         : left_idx(-1), right_idx(-1),
           left_type(-1), right_type(-1),
-          left(-1), right(-1), leaf(-1) {}
+          left(-1), right(-1), leaf(-1),
+          grid_code(0), grid_bits(0) {}
 };
 
 struct GPU_LeafNode{
@@ -317,9 +323,11 @@ TreeNode* build_tree_agc(const std::vector<Object*>& objects,
 			 const std::vector<struct Action>&actions,
 			 const AABB& aabb, const AABB& cent_aabb);
 
+
+
 void process_actions(TreeNode* &root, const std::vector<Object*>& objects,
 		     const std::vector<struct Action>& actions,
-		     const AABB& cent_aabb, int frame, vector<LeafNode*>& dirty_leaves);
+		     const AABB& cent_aabb, int frame, vector<LeafNode*>& dirty_leaves, DirtyKeySet& dirty_keys);
 void refit_tree(TreeNode *root, const std::vector<Object*>& objects,
 		const std::vector<struct Action>& actions,
 		const AABB& aabb, const AABB& cent_aabb);
@@ -327,6 +335,7 @@ void refit_tree(TreeNode *root, const std::vector<Object*>& objects,
 ReturnRecord build_bvh(TreeNode *node, const AABB& cent_aabb, int level);
 __device__ bool find_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
 bool find_any_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
+
 
 void destroy_tree(TreeNode *root);
 void count_nodes(TreeNode *node, 
@@ -342,6 +351,31 @@ inline void sort_dirty_leaves_by_grid_code(
     int num_dirty_leaves,
     cudaStream_t stream = 0
 );
+static std::vector<ulonglong2> build_sorted_dirty_keys_from_set(const DirtyKeySet dirty_keys)
+{
+    std::vector<ulonglong2> out;
+    out.reserve(dirty_keys.size());
+
+    for (const auto& k : dirty_keys) {
+        out.push_back(make_ulonglong2(
+            (unsigned long long)k.code,
+            (unsigned long long)k.bits
+        ));
+    }
+
+    auto less_key = [](const ulonglong2& a, const ulonglong2& b) {
+        if (a.y != b.y) return a.y < b.y; // bits first
+        return a.x < b.x;                 // then code
+    };
+    auto equal_key = [](const ulonglong2& a, const ulonglong2& b) {
+        return a.x == b.x && a.y == b.y;
+    };
+
+    std::sort(out.begin(), out.end(), less_key);
+    out.erase(std::unique(out.begin(), out.end(), equal_key), out.end());
+
+    return out;
+}
 
 __global__ void kernel_build_initial_clusters_from_leaves(
     const GPU_LeafNode* leaves,
@@ -350,6 +384,7 @@ __global__ void kernel_build_initial_clusters_from_leaves(
 );
 
 struct DeviceScene;
+struct Scene;
 
 __global__ void kernel_set_bvh_root_from_final_cluster(
     DeviceScene* d_scene,
@@ -359,13 +394,13 @@ __global__ void kernel_set_bvh_root_from_final_cluster(
 
 void build_bvh_on_gpu(
     DeviceScene* d_scene,
-    GPU_Cluster* d_clusters,
-    int num_clusters,
-    GPU_BVH_Node* d_bvh_nodes,
-    int* d_num_bvh_nodes,
+    DeviceScene& h_scene,
+    const std::vector<LeafNode*>& dirty_leaves_cpu,
+    const std::vector<ulonglong2>& h_dirty_keys,
     cudaStream_t stream
 );
 
-void build_initial_bvh_gpu(DeviceScene* d_scene, DeviceScene& h_scene, cudaStream_t stream);
+void build_initial_bvh_gpu(Scene scene, DeviceScene* d_scene, DeviceScene& h_scene, cudaStream_t stream, const vector<ulonglong2>& h_dirty_keys);
 
 __global__ void init_dirty_leaf_aabbs_kernel(GPU_LeafNode* dirty_leaves, int num_dirty_leaves);
+void promote_curr_to_prev(DeviceScene& h_scene);

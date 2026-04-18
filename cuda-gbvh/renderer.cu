@@ -106,75 +106,75 @@ __device__ bool intersect_leaf(
     return hit_any;
 }
 
-__device__ bool find_intersection_bvh_cpu(
-    const DeviceScene* d_scene,
-    const Ray& ray,
-    Intersection& itsc,
-    float t_min,
-    float t_max
-){
-    const GPU_BVH_Node* nodes  = d_scene->bvh_nodes;
-    const GPU_LeafNode* leaves = d_scene->bvh_leaves;
-    const Triangle* triangles = d_scene->triangles;
+// __device__ bool find_intersection_bvh_cpu(
+//     const DeviceScene* d_scene,
+//     const Ray& ray,
+//     Intersection& itsc,
+//     float t_min,
+//     float t_max
+// ){
+//     const GPU_BVH_Node* nodes  = d_scene->curr_bvh_nodes;
+//     const GPU_LeafNode* leaves = d_scene->bvh_leaves;
+//     const Triangle* triangles = d_scene->triangles;
 
-    int stack[64];   // 深さは log2(N) 程度 → 固定長でOK
-    int sp = 0;
+//     int stack[64];   // 深さは log2(N) 程度 → 固定長でOK
+//     int sp = 0;
 
-    bool hit_any = false;
-    float closest_t = t_max;
+//     bool hit_any = false;
+//     float closest_t = t_max;
 
-    int root = d_scene->bvh_root;
-    if (root < 0) return false;
+//     int root = d_scene->curr_bvh_root_node_idx;
+//     if (root < 0) return false;
 
-    stack[sp++] = root;
+//     stack[sp++] = root;
 
-    while (sp > 0) {
-        if (sp >= 64) return hit_any;  // とりあえず溢れたら打ち切り
-        int node_idx = stack[--sp];
-        const GPU_BVH_Node& node = nodes[node_idx];
+//     while (sp > 0) {
+//         if (sp >= 64) return hit_any;  // とりあえず溢れたら打ち切り
+//         int node_idx = stack[--sp];
+//         const GPU_BVH_Node& node = nodes[node_idx];
 
-        // AABB カリング
-        if (!intersect_aabb(node.aabb, ray, t_min, closest_t))
-            continue;
+//         // AABB カリング
+//         if (!intersect_aabb(node.aabb, ray, t_min, closest_t))
+//             continue;
 
-        // =========================
-        //          LEAF
-        // =========================
-        if (node.leaf >= 0) {
-            const GPU_LeafNode& leaf = leaves[node.leaf];
+//         // =========================
+//         //          LEAF
+//         // =========================
+//         if (node.leaf >= 0) {
+//             const GPU_LeafNode& leaf = leaves[node.leaf];
 
-            for (int i = 0; i < leaf.tri_count; ++i) {
-                // if(d_scene->num_triangles <= leaf.tri_offset + i){
-                //     printf("Warning: Triangle index out of bounds: %d (num_triangles: %d)\n", leaf.tri_offset + i, d_scene->num_triangles);
-                //     continue;
-                // }
-                const Triangle* tri =
-                    &triangles[leaf.tri_offset + i]; // indexを0にするとエラーが起きないので、ここが原因
+//             for (int i = 0; i < leaf.tri_count; ++i) {
+//                 // if(d_scene->num_triangles <= leaf.tri_offset + i){
+//                 //     printf("Warning: Triangle index out of bounds: %d (num_triangles: %d)\n", leaf.tri_offset + i, d_scene->num_triangles);
+//                 //     continue;
+//                 // }
+//                 const Triangle* tri =
+//                     &triangles[leaf.tri_offset + i]; // indexを0にするとエラーが起きないので、ここが原因
 
-                Intersection cand;
-                if (intersect_triangle(ray, tri, cand, t_min, closest_t)) {
-                    closest_t = cand.t;
-                    itsc = cand;
-                    hit_any = true;
-                }
-            }
-        }
-        // =========================
-        //        INTERNAL
-        // =========================
-        else {
-            // left
-            if (node.left >= 0)
-                stack[sp++] = node.left;
+//                 Intersection cand;
+//                 if (intersect_triangle(ray, tri, cand, t_min, closest_t)) {
+//                     closest_t = cand.t;
+//                     itsc = cand;
+//                     hit_any = true;
+//                 }
+//             }
+//         }
+//         // =========================
+//         //        INTERNAL
+//         // =========================
+//         else {
+//             // left
+//             if (node.left >= 0)
+//                 stack[sp++] = node.left;
 
-            // right
-            if (node.right >= 0)
-                stack[sp++] = node.right;
-        }
-    }
+//             // right
+//             if (node.right >= 0)
+//                 stack[sp++] = node.right;
+//         }
+//     }
 
-    return hit_any;
-}
+//     return hit_any;
+// }
 
 __device__ bool find_intersection_bvh(
     const DeviceScene* d_scene,
@@ -183,8 +183,8 @@ __device__ bool find_intersection_bvh(
     float t_min,
     float t_max
 ){
-    const GPU_BVH_Node* nodes  = d_scene->bvh_nodes;
-    const GPU_LeafNode* leaves = d_scene->dirty_leaves;
+    const GPU_BVH_Node* nodes  = d_scene->curr_bvh_nodes;
+    const GPU_LeafNode* leaves = d_scene->frame_leaves;
 
     int stack[64];
     int sp = 0;
@@ -192,7 +192,7 @@ __device__ bool find_intersection_bvh(
     bool hit_any = false;
     float closest_t = t_max;
 
-    int root = d_scene->bvh_root_node_idx;
+    int root = d_scene->curr_bvh_root_node_idx;
     // printf("Starting BVH traversal from root node %d\n", root);
     if(root < 0) return false;
 

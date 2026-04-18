@@ -7,6 +7,7 @@
 #include "utility.h"
 #include "check_cuda.h"
 #include "paramerters.h"
+#include "keys.h"
 #include <map>
 #include <vector>
 #include <string>
@@ -93,39 +94,40 @@ struct DeviceScene{
     Triangle* triangles;
     int num_triangles;
 
-    GPU_LeafNode* bvh_leaves;
+    Action* scenario;
+    int* num_actions_at_frame;
+    int max_num_actions;
+
+    // 今フレーム dirty leaves
     GPU_LeafNode* dirty_leaves;
-    int num_dirty_leaves;  
-    
+    int num_dirty_leaves;
+
+    // prev completed BVH
+    GPU_LeafNode* prev_complete_leaves;
+    int num_prev_complete_leaves;
+
     GPU_BVH_Node* prev_bvh_nodes;
     int* num_prev_bvh_nodes;
     int prev_bvh_root_node_idx;
 
-    GPU_Cluster *clusters;
+    // curr build nodes
+    GPU_BVH_Node* curr_bvh_nodes;
+    int* num_curr_bvh_nodes;
+
+    // AGC input clusters
+    GPU_Cluster* clusters;
     int num_clusters;
 
-    GPU_BVH_Node* bvh_nodes;
-    int bvh_node_capacity;
-    int* num_bvh_nodes;
+    // 今フレーム完成 root（実質 curr 側）
+    int curr_bvh_root_node_idx;
 
-    GPU_BVH_Node* prev_bvh_nodes;
-    int* num_prev_bvh_nodes;
-    int* prev_bvh_root_node_idx;
+    ulonglong2* dirty_keys;
+    int num_dirty_keys;
 
-    GPU_BVH_Node* curr_build_nodes;
-    int* num_curr_build_nodes;
-    
-    int bvh_root_node_idx;
-    int bvh_root;
-    int num_bvh_leaves;
+    GPU_LeafNode* frame_leaves;
+    int num_frame_leaves;
 
-
-
-    Action* scenario; 
-    int* num_actions_at_frame;     // 各フレームのアクションのサイズ
-    int max_num_actions; // Scenarioの中で最も大きいAction配列のサイズ max(scenario[frame].size())
-
-    DeviceScene() : bvh_nodes(nullptr), bvh_leaves(nullptr), bvh_root(-1), num_bvh_nodes(0), num_bvh_leaves(0) {}
+    DeviceScene() : prev_bvh_root_node_idx(-1), curr_bvh_root_node_idx(-1) {}
     ~DeviceScene() {
         for(int i = 0; i < num_triangles; i++){
             // delete objects[i]; 
@@ -159,13 +161,25 @@ __device__ inline int get_num_triangles_at_frame(const DeviceScene* scene, int f
 
 
 
-void copy_scene_to_device_scene(Scene& scene, DeviceScene*& d_scene, DeviceScene& h_device_scene);
+void copy_scene_to_device_scene(
+    Scene& scene,
+    DeviceScene*& d_scene,
+    DeviceScene& h_device_scene,
+    const std::vector<ulonglong2>& h_dirty_keys   // CPU側で作った dirty_keys を受け取る
+);
+
 void free_device_scene(DeviceScene* d_scene);
 
 static void calc_scene_aabb(vector<Object*>& objects, AABB& scene_aabb, AABB &cent_aabb);
-void build_initial_tree(Scene& scene, InputParameter& param, int frame, vector<LeafNode*>& dirty_leaves);
-void build_initial_grid(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves);
+void build_initial_tree(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves, DirtyKeySet& dirty_keys);
+void build_initial_grid(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves, DirtyKeySet& dirty_keys);
 void modify_scene(Scene &scene, InputParameter& param, int frame, vector<LeafNode*>& dirty_leaves);
 void update_device_bvh(const Scene& scene, DeviceScene* d_scene);
-void update_grid_tree(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves);
-void update_bvh_gpu(DeviceScene* d_scene, DeviceScene& h_scene, Scene& scene, cudaStream_t stream);
+void update_grid_tree(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves, DirtyKeySet& dirty_keys);
+void update_bvh_gpu(
+    DeviceScene* d_scene,
+    DeviceScene& h_scene,
+    Scene& scene,
+    const std::vector<ulonglong2>& h_dirty_keys,
+    cudaStream_t stream
+);
