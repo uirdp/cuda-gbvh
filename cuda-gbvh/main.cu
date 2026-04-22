@@ -345,19 +345,34 @@ int main(int argc, char** argv){
             if(frame > 0){
                 dirty_keys.clear();
                 // CPUでグリッド木を更新
+                auto start_update = std::chrono::high_resolution_clock::now();
                 update_grid_tree(scene, param, frame, dirty_leaves, dirty_keys);
+                auto end_update = std::chrono::high_resolution_clock::now();
+                double update_ms = std::chrono::duration<double, std::milli>(end_update
+    - start_update).count();
+                printf("Grid tree updated in %.2f ms, num_dirty_leaves=%zu\n", update_ms, dirty_leaves.size());
+
                 h_dirty_keys = build_sorted_dirty_keys_from_set(dirty_keys);
                 dirty_leaves.clear();
                 // dirty leavesの収集、いったんすべてのleafをdirtyとして扱う
                 collect_dirty_leaves(scene.grid_root, dirty_leaves);
                 scene.dirty_leaves = dirty_leaves;
+                auto start_update_gpu = std::chrono::high_resolution_clock::now();
                 update_bvh_gpu(d_scene, h_device_scene, scene, h_dirty_keys, 0);
+                auto end_update_gpu = std::chrono::high_resolution_clock::now();
+                double update_gpu_ms = std::chrono::duration<double, std::milli>(end_update_gpu - start_update_gpu).count();
+                printf("BVH updated on GPU in %.2f ms\n", update_gpu_ms);
             }
-
+            
+            auto start_render = std::chrono::high_resolution_clock::now();
             render_image<<<blocks, threads>>>(framebuffers, image_width, image_height, camera_param, d_scene, frame);
             promote_curr_to_prev(h_device_scene);
             CHECK_CUDA(cudaGetLastError());
             CHECK_CUDA(cudaDeviceSynchronize());
+
+            auto end_render = std::chrono::high_resolution_clock::now();
+            double render_ms = std::chrono::duration<double, std::milli>(end_render - start_render).count();
+            printf("Frame %d rendered in %.2f ms\n", frame, render_ms);
 
             auto end_time = std::chrono::high_resolution_clock::now();
 
