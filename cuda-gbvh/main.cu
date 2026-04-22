@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdint>
+#include <chrono>
 
 #include "includes/external/glm/vec3.hpp"
 #include "includes/external/glm/vec2.hpp"
@@ -328,6 +329,7 @@ int main(int argc, char** argv){
 
     for(int frame = 0; frame < num_frames; frame++){
         if(scene.scenario.size() > 2){
+            auto start_time = std::chrono::high_resolution_clock::now();
             printf("Rendering frame %d / %d\n", frame, num_frames);
             
             // if(frame > 0){
@@ -356,6 +358,11 @@ int main(int argc, char** argv){
             promote_curr_to_prev(h_device_scene);
             CHECK_CUDA(cudaGetLastError());
             CHECK_CUDA(cudaDeviceSynchronize());
+
+            auto end_time = std::chrono::high_resolution_clock::now();
+
+            double ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+            printf("Frame %d rendered in %.2f ms\n", frame, ms);
         }
     }
     

@@ -862,9 +862,6 @@ void update_bvh_gpu(
         printf("Only one dirty leaf, skipping AGC and using it as the BVH root candidate.\n");
     }
 
-    printf("update_bvh_gpu: num_dirty_leaves=%d, num_dirty_keys=%d\n",
-           num_dirty_leaves, num_dirty_keys);
-
     CHECK_CUDA(cudaGetLastError());
 }
 void update_grid_tree(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves, DirtyKeySet& dirty_keys)

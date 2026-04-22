@@ -1631,6 +1631,8 @@ cstdio
 -
 cstdint
 -
+chrono
+-
 includes/external/glm/vec3.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
 includes/external/glm/vec2.hpp

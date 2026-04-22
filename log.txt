@@ -65,7 +65,11 @@ copy_sceneもCPU版を残しておくこと
 liftができていなかったので修正、してもうまくいかない、keyが同一になっていないようだ
 
 3/18
-どおやらleafのaabbが初期化できていないらしい
+どうやらleafのaabbが初期化できていないらしい
 でもCPU版では動いてた・・・どういうことや？
 AABBはbuild_bvhで計算していて、グリッドの時点ではまだ計算してないみたい。
 
+26/4/18
+affected clusters実装
+expiredは未実装
+ポリゴンが変なのでaffected clustersがうまくいっていない可能性が高い
