@@ -179,6 +179,106 @@ static void debug_print_code_range_per_bits(const std::vector<LeafNode*>& dirty_
     }
 }
 
+static void print_dirty_leaf_bits_distribution(const std::vector<LeafNode*>& dirty_leaves)
+{
+    std::map<int, int> bits_count;
+    int null_count = 0;
+
+    for (LeafNode* leaf : dirty_leaves)
+    {
+        if (!leaf) {
+            null_count++;
+            continue;
+        }
+
+        bits_count[(int)leaf->grid_bits]++;
+    }
+
+    printf("=== dirty_leaves target_bits distribution ===\n");
+    for (const auto& kv : bits_count)
+    {
+        printf("bits %d : %d clusters\n", kv.first, kv.second);
+    }
+
+    if (null_count > 0) {
+        printf("null leaves : %d\n", null_count);
+    }
+    printf("total dirty leaves : %zu\n", dirty_leaves.size());
+    printf("============================================\n");
+}
+
+struct LeafKey {
+    uint64_t code;
+    uint8_t bits;
+
+    bool operator==(const LeafKey& other) const {
+        return code == other.code && bits == other.bits;
+    }
+};
+
+struct LeafKeyHash {
+    size_t operator()(const LeafKey& k) const {
+        return std::hash<uint64_t>()(k.code) ^ (std::hash<int>()((int)k.bits) << 1);
+    }
+};
+
+static void print_same_key_pair_stats(const std::vector<LeafNode*>& dirty_leaves)
+{
+    std::unordered_map<LeafKey, int, LeafKeyHash> counts;
+    counts.reserve(dirty_leaves.size());
+
+    int null_count = 0;
+
+    for (LeafNode* leaf : dirty_leaves)
+    {
+        if (!leaf) {
+            null_count++;
+            continue;
+        }
+
+        LeafKey k{leaf->grid_code, leaf->grid_bits};
+        counts[k]++;
+    }
+
+    long long total_clusters = 0;
+    long long total_pairs_possible = 0;
+    int num_groups = 0;
+    int num_groups_with_pairs = 0;
+    int max_group_size = 0;
+
+    printf("=== same-key stats (CPU) ===\n");
+
+    for (const auto& kv : counts)
+    {
+        const LeafKey& k = kv.first;
+        int cnt = kv.second;
+        int pairs = cnt / 2;
+
+        total_clusters += cnt;
+        total_pairs_possible += pairs;
+        num_groups++;
+        if (pairs > 0) num_groups_with_pairs++;
+        max_group_size = std::max(max_group_size, cnt);
+
+        if (cnt >= 2) {
+            printf("bits=%d code=%llu : count=%d pairs=%d\n",
+                   (int)k.bits,
+                   (unsigned long long)k.code,
+                   cnt,
+                   pairs);
+        }
+    }
+
+    printf("---------------------------------\n");
+    printf("total dirty leaves      : %lld\n", total_clusters);
+    printf("num key groups          : %d\n", num_groups);
+    printf("groups with pairs       : %d\n", num_groups_with_pairs);
+    printf("max group size          : %d\n", max_group_size);
+    printf("total possible pairs    : %lld\n", total_pairs_possible);
+    printf("null leaves             : %d\n", null_count);
+    printf("=================================\n");
+}
+
 int main(int argc, char** argv){
     InputParameter param;
     Scene scene;
@@ -301,6 +401,8 @@ int main(int argc, char** argv){
     // dirty leavesの収集
     collect_dirty_leaves(scene.grid_root, dirty_leaves);
     scene.dirty_leaves = dirty_leaves;
+
+    print_same_key_pair_stats(dirty_leaves);
     
     DeviceScene* d_scene;
     DeviceScene h_device_scene{};

@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <cstdint>
+#include <chrono>
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
@@ -1672,7 +1673,8 @@ inline RoundResult agc_round_one_level_no_lift(
             thrust::maximum<int>()
         );
     }
-    // printf("Group count: %d, max group size for target bits (%d): %d\n", G, target_bits, max_count_target);
+
+    printf("Group count: %d, max group size for target bits (%d): %d\n", G, target_bits, max_count_target);
     rr.max_group_size = max_count_target;
 
     // group_offsets
@@ -1915,13 +1917,17 @@ inline StageAResult reduce_levelwise_merge_then_lift(
     }
 
     while(n > 1 && rounds < max_rounds_guard){
+
         // ターゲットになるレベル（深さ）
         int target_bits = device_max_bits(cur, n, stream);
-        if(target_bits < 0){
+        if(target_bits == 0 && n <= 1){
             break;
         }
 
+        printf("[outer] rounds=%d n=%d target_bits=%d\n", rounds, n, target_bits);
+
         while(rounds < max_rounds_guard){
+            int n_before = n;
             // target bitsの深さのクラスターだけをマージする
             RoundResult rr = agc_round_one_level_no_lift(
                 cur, n, target_bits,
@@ -1936,6 +1942,9 @@ inline StageAResult reduce_levelwise_merge_then_lift(
             cur = rr.d_next;
             n   = rr.n_next;
             rounds++;
+
+            printf("[inner] target_bits=%d n_before=%d n_after=%d groups=%d max_group=%d pairs=%d\n",
+                    target_bits, n_before, rr.n_next, rr.num_groups, rr.max_group_size, rr.num_pairs);
 
             if(rr.max_group_size <= 1){
                 // printf("Finished merging at bits=%d after %d rounds (n=%d, pairs=%d)\n", target_bits, rounds, n, rr.num_pairs);
@@ -2000,6 +2009,7 @@ void build_bvh_on_gpu(
         (num_prev_nodes > 0) &&
         (h_scene.num_prev_complete_leaves > 0);
 
+    auto start_time = std::chrono::high_resolution_clock::now();
     if (has_prev_bvh) {
         collect_affected_clusters_from_prev(
             h_scene,
@@ -2010,6 +2020,9 @@ void build_bvh_on_gpu(
             stream
         );
     }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+    printf("Time for collecting affected clusters: %.3f ms\n", elapsed.count());
 
     build_frame_leaves(
         d_scene,
@@ -2098,6 +2111,7 @@ void build_bvh_on_gpu(
                                    stream));
     }
     else {
+        auto start_time = std::chrono::high_resolution_clock::now();
         // --------------------------------------------------------
         // 6. AGC 実行
         // --------------------------------------------------------
@@ -2108,6 +2122,9 @@ void build_bvh_on_gpu(
             h_scene.num_curr_bvh_nodes,
             stream
         );
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+        printf("Time for AGC reduction: %.3f ms (rounds taken: %d)\n", elapsed.count(), res.rounds_taken);
 
         // root を DeviceScene に書く
         kernel_set_bvh_root_from_final_cluster<<<1, 1, 0, stream>>>(
