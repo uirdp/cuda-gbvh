@@ -2057,6 +2057,9 @@ void build_bvh_on_gpu(
         num_input_clusters = total_clusters;
     }
 
+    printf("Total input clusters for AGC: %d (dirty: %d, affected: %d)\n",
+            num_input_clusters, h_scene.num_dirty_leaves, num_affected_clusters);
+
     // ------------------------------------------------------------
     // 4. curr_bvh_nodes を total cluster 数に合わせて再確保
     //    internal node 最大数は (num_input_clusters - 1)
