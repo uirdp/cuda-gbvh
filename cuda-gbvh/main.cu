@@ -458,6 +458,7 @@ int main(int argc, char** argv){
                 dirty_leaves.clear();
                 // dirty leavesの収集、いったんすべてのleafをdirtyとして扱う
                 collect_dirty_leaves(scene.grid_root, dirty_leaves);
+                printf("Collected dirty leaves, count = %zu\n", dirty_leaves.size());
                 scene.dirty_leaves = dirty_leaves;
                 auto start_update_gpu = std::chrono::high_resolution_clock::now();
                 update_bvh_gpu(d_scene, h_device_scene, scene, h_dirty_keys, 0);

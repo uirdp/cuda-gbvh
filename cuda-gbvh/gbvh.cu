@@ -67,13 +67,13 @@ int collect_dirty_leaves(TreeNode* node, vector<LeafNode*>& dirty_leaves){
     int count = 0;
     if(node->type == NT_LEAF){
         LeafNode* leaf = (LeafNode*)node;
-        // if(leaf->is_dirty){
-        //     dirty_leaves.push_back(leaf);
-        //     count = 1;
-        // }
+        if(leaf->is_dirty){
+            dirty_leaves.push_back(leaf);
+            count = 1;
+        }
         // いったんすべてのleafをdirtyとして扱う
-        dirty_leaves.push_back(leaf);
-        count = 1;
+        // dirty_leaves.push_back(leaf);
+        // count = 1;
     } else if(node->type == NT_BRANCH){
         BVH_Node* bvh = (BVH_Node*)node;
         count += collect_dirty_leaves(bvh->left, dirty_leaves);
@@ -1924,7 +1924,7 @@ inline StageAResult reduce_levelwise_merge_then_lift(
             break;
         }
 
-        printf("[outer] rounds=%d n=%d target_bits=%d\n", rounds, n, target_bits);
+        // printf("[outer] rounds=%d n=%d target_bits=%d\n", rounds, n, target_bits);
 
         while(rounds < max_rounds_guard){
             int n_before = n;
@@ -1943,8 +1943,8 @@ inline StageAResult reduce_levelwise_merge_then_lift(
             n   = rr.n_next;
             rounds++;
 
-            printf("[inner] target_bits=%d n_before=%d n_after=%d groups=%d max_group=%d pairs=%d\n",
-                    target_bits, n_before, rr.n_next, rr.num_groups, rr.max_group_size, rr.num_pairs);
+            // printf("[inner] target_bits=%d n_before=%d n_after=%d groups=%d max_group=%d pairs=%d\n",
+            //         target_bits, n_before, rr.n_next, rr.num_groups, rr.max_group_size, rr.num_pairs);
 
             if(rr.max_group_size <= 1){
                 // printf("Finished merging at bits=%d after %d rounds (n=%d, pairs=%d)\n", target_bits, rounds, n, rr.num_pairs);
