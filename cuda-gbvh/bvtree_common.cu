@@ -1,94 +1,92 @@
 #include "includes/bvtree.cuh"
 
-#define SIZE_MARGIN 10
+#define  SIZE_MARGIN  10
 
-int flatten_node(TreeNode *node, FlattenContext &ctx)
-{
+
+
+
+int flatten_node(TreeNode* node, FlattenContext& ctx){
     int node_idx = ctx.nodes.size();
     ctx.nodes.emplace_back();
 
-    if (node->type == NT_LEAF)
-    {
-        LeafNode *leaf = (LeafNode *)node;
+    if(node->type == NT_LEAF){
+        LeafNode* leaf = (LeafNode*)node;
 
         GPU_LeafNode gpu_leaf;
         gpu_leaf.aabb = leaf->aabb;
+        gpu_leaf.grid_code = leaf->grid_code;
+        gpu_leaf.grid_bits = leaf->grid_bits;
         gpu_leaf.tri_offset = ctx.triangles.size();
         gpu_leaf.tri_count = leaf->nobjs;
+
+        for(int i = 0; i < MAX_LEAF_SIZE; ++i){
+            gpu_leaf.triangles[i] = leaf->triangles[i];
+        }
+
+        if(leaf->is_dirty){
+            ctx.dirty_leaves.push_back(gpu_leaf);
+        }
 
         // printf("Triangle offset: %d, count: %d\n", gpu_leaf.tri_offset, gpu_leaf.tri_count);
         // printf("triangle size before adding: %zu\n", ctx.triangles.size());
 
-        for (int i = 0; i < leaf->nobjs; ++i)
-        {
+        for(int i = 0; i < leaf->nobjs; ++i){
             ctx.triangles.push_back(leaf->triangles[i]);
         }
 
         int leaf_idx = ctx.leaves.size();
         ctx.leaves.push_back(gpu_leaf);
 
-        GPU_BVH_Node n;
-        n.aabb = leaf->aabb;
-        n.left = -1;
-        n.right = -1;
-        n.leaf = leaf_idx;
-        ctx.nodes[node_idx] = n;
-    }
-    else if (node->type == NT_BRANCH)
-    {
-        BVH_Node *bvh = (BVH_Node *)node;
+        ctx.nodes[node_idx] = GPU_BVH_Node{};
+        ctx.nodes[node_idx].aabb = leaf->aabb;
+        ctx.nodes[node_idx].leaf = leaf_idx;
+
+    } else if(node->type == NT_BRANCH){
+        BVH_Node* bvh = (BVH_Node*)node;
 
         int left = flatten_node(bvh->left, ctx);
         int right = flatten_node(bvh->right, ctx);
 
-        GPU_BVH_Node n;
-        n.aabb = AABB::merge(bvh->aabbs[0], bvh->aabbs[1]);
-        n.left = left;
-        n.right = right;
-        n.leaf = -1;
+        // ctx.nodes[node_idx] = {
+        //     .aabb = AABB::merge(bvh->aabbs[0], bvh->aabbs[1]),
+        //     .left = left,
+        //     .right = right,
+        //     .leaf = -1
+        // };
 
-        ctx.nodes[node_idx] = n;
-    }
-    else
-    {
-        GridNode *grid = (GridNode *)node;
-        if (grid->bvh_node)
-        {
+        ctx.nodes[node_idx] = GPU_BVH_Node{};
+        ctx.nodes[node_idx].aabb = AABB::merge(bvh->aabbs[0], bvh->aabbs[1]);
+        ctx.nodes[node_idx].left = left;
+        ctx.nodes[node_idx].right = right;
+    } else {
+        GridNode* grid = (GridNode*)node;
+        if (grid->bvh_node) {
             return flatten_node(grid->bvh_node, ctx);
-        }
-        else
-        {
+        } else {
             return -1;
         }
     }
 
     return node_idx;
+} 
+
+void destroy_tree(TreeNode *node){
+     if( !node ) return;
+    if( node->type == NT_GRID ) {
+	for( int i = 0; i < NDIV*NDIV*NDIV; i++ ) {
+	    destroy_tree(((GridNode*)node)->cells[i]);
+	}
+	if( ((GridNode*)node)->node_alloc_buf )
+	    free((void*) ((GridNode*)node)->node_alloc_buf);
+	delete node;
+    } else if( node->type == NT_BRANCH ) {
+	destroy_tree(((BVH_Node*)node)->left);
+	destroy_tree(((BVH_Node*)node)->right);
+	delete node;
+    } else {
+	if( ((LeafNode*)node)->bvh_node ) destroy_tree(((LeafNode*)node)->bvh_node);
+	delete (LeafNode*) node;
+    }
 }
 
-void destroy_tree(TreeNode *node)
-{
-    if (!node)
-        return;
-    if (node->type == NT_GRID)
-    {
-        for (int i = 0; i < NDIV * NDIV * NDIV; i++)
-        {
-            destroy_tree(((GridNode *)node)->cells[i]);
-        }
-        if (((GridNode *)node)->node_alloc_buf)
-            free((void *)((GridNode *)node)->node_alloc_buf);
-        delete node;
-    }
-    else if (node->type == NT_BRANCH)
-    {
-        destroy_tree(((BVH_Node *)node)->left);
-        destroy_tree(((BVH_Node *)node)->right);
-        delete node;
-    }
-    else
-    {
-        if (((LeafNode *)node)->bvh_node)
-            destroy_tree(((LeafNode *)node)->bvh_node);
-        delete (LeafNode *)node;
-    }
-}
+

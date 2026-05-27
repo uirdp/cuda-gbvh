@@ -334,10 +334,6 @@ assert.h
 
 ../includes/external/opencv2/opencv_modules.hpp
 
-/home/m5291093/cuda-gbvh/cuda-gbvh/bvtree_common.cu
-includes/bvtree.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
-
 /home/m5291093/cuda-gbvh/cuda-gbvh/gbvh.cu
 includes/bvtree.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
@@ -350,6 +346,38 @@ includes/external/glm/vec3.hpp
 vector
 -
 alloca.h
+-
+unordered_map
+-
+unordered_set
+-
+algorithm
+-
+cstdint
+-
+chrono
+-
+thrust/device_vector.h
+-
+thrust/host_vector.h
+-
+thrust/sort.h
+-
+thrust/transform.h
+-
+thrust/reduce.h
+-
+thrust/scan.h
+-
+thrust/iterator/counting_iterator.h
+-
+thrust/iterator/constant_iterator.h
+-
+thrust/iterator/discard_iterator.h
+-
+thrust/functional.h
+-
+cuda_runtime.h
 -
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/aabb.h
@@ -367,6 +395,8 @@ string
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/bvtree.cuh
 object.cuh
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
+keys.h
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/keys.h
 aabb.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/aabb.h
 external/glm/vec3.hpp
@@ -383,7 +413,15 @@ cuda_runtime.h
 -
 limits
 -
+unordered_set
+-
 vector
+-
+thrust/sort.h
+-
+thrust/device_ptr.h
+-
+thrust/execution_policy.h
 -
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/check_cuda.h
@@ -1434,14 +1472,6 @@ opencv2/core/check.hpp
 opencv2/core.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/opencv2/core/opencv2/core.hpp
 
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/fileio.h
-scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
-paramerters.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/paramerters.h
-string
--
-
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/intersection.cuh
 external/glm/vec3.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
@@ -1454,6 +1484,12 @@ object.cuh
 ray.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/ray.h
 cuda_runtime.h
+-
+
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/keys.h
+unordered_set
+-
+cstdint
 -
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/light.h
@@ -1506,32 +1542,6 @@ constants.h
 cuda_runtime.h
 -
 
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
-triangle.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/triangle.cuh
-object.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/object.cuh
-ray.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/ray.h
-trace.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/trace.cuh
-scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
-external/glm/vec3.hpp
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
-intersection.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/intersection.cuh
-cuda_runtime.h
--
-vector
--
-string
--
-iostream
--
-stdio.h
--
-
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
 external/glm/vec3.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
@@ -1547,6 +1557,8 @@ check_cuda.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/check_cuda.h
 paramerters.h
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/paramerters.h
+keys.h
+/home/m5291093/cuda-gbvh/cuda-gbvh/includes/keys.h
 map
 -
 vector
@@ -1558,12 +1570,6 @@ stdio.h
 cuda_runtime.h
 -
 device_launch_parameters.h
--
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/statistics.h
-string
--
-stdio.h
 -
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/texture.h
@@ -1579,8 +1585,6 @@ external/opencv2/core/core.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/opencv2/core/core.hpp
 external/opencv2/core/base.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/opencv2/core/base.hpp
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/trace.cuh
 
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/triangle.cuh
 object.cuh
@@ -1611,36 +1615,4 @@ iostream
 -
 external/glm/vec3.hpp
 /home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/main.cu
-iostream
--
-string.h
--
-cuda_runtime.h
--
-includes/external/glm/vec3.hpp
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec3.hpp
-includes/external/glm/vec2.hpp
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/external/glm/vec2.hpp
-includes/scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
-includes/paramerters.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/paramerters.h
-includes/fileio.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/fileio.h
-includes/statistics.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/statistics.h
-includes/renderer.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
-includes/utility.h
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/utility.h
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/renderer.cu
-includes/renderer.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/renderer.cuh
-
-/home/m5291093/cuda-gbvh/cuda-gbvh/scene.cu
-includes/scene.cuh
-/home/m5291093/cuda-gbvh/cuda-gbvh/includes/scene.cuh
 

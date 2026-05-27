@@ -1,6 +1,7 @@
 #pragma once
 
 #include "object.cuh"
+#include "keys.h"
 // #include "embree/kernels/bvh/bvh.h"
 // #include "embree/common/math/vec3fa.h"
 // #include "embree/kernels/geometry/triangle.h"
@@ -13,7 +14,12 @@
 
 #include <cuda_runtime.h>
 #include <limits>
+#include <unordered_set>
 #include <vector>
+
+#include <thrust/sort.h>
+#include <thrust/device_ptr.h>
+#include <thrust/execution_policy.h>
 
 #define BVTREE_MAX_LEVEL 30   // Tree の最大深さ
 #define BVTREE_SAH_KB    1.0  // SAHにおけるAABB交差判定コストの定数
@@ -66,17 +72,60 @@ struct BVH_Node : public TreeNode {
     }
 };
 
+enum GPUChildType {
+    GPU_CHILD_LEAF = 0,
+    GPU_CHILD_NODE = 1
+};
+
+enum GPUNodeSource {
+    GPU_NODE_SRC_NONE = 0,
+    GPU_NODE_SRC_PREV = 1,
+    GPU_NODE_SRC_CURR = 2
+};
+
 struct GPU_BVH_Node {
     AABB aabb;
+
+    int left_idx;
+    int right_idx;
+
+    int left_type; // GPU_CHILD_LEAF or GPU_CHILD_NODE
+    int right_type; // GPU_CHILD_LEAF or GPU_CHILD_NODE
+
+    int left_source; // GPU_NODE_SRC_NONE, GPU_NODE_SRC_PREV, GPU_NODE_SRC_CURR
+    int right_source; // GPU_NODE_SRC_NONE, GPU_NODE_SRC_PREV, GPU_NODE
+
     int left;
     int right;
-    int leaf; // leaf index if leaf node, -1 otherwise
+    int leaf;
+
+    uint64_t grid_code;
+    uint8_t grid_bits;
+
+    __host__ __device__
+    GPU_BVH_Node()
+        : left_idx(-1), right_idx(-1),
+          left_type(-1), right_type(-1),
+          left(-1), right(-1), leaf(-1),
+          grid_code(0), grid_bits(0) {}
 };
 
 struct GPU_LeafNode{
     AABB aabb;
-    int tri_offset;
-    int tri_count;
+    int tri_offset; // 未使用
+    uint64_t grid_code;
+    uint8_t  grid_bits;
+    int tri_count; // 未使用
+    Triangle triangles[MAX_LEAF_SIZE];
+};
+
+struct GPU_Cluster {
+    AABB aabb;
+    uint64_t grid_code;
+    uint8_t grid_bits;
+    int leaf_idx; // -1 if not a leaf, otherwise the index of the leaf in the GPU_LeafNode array
+    int node_idx; // -1 if not a node, otherwise the index of the node in the GPU_BVH_Node array
+    int node_source; // GPU_NODE_SRC_NONE, GPU_NODE_SRC_PREV, GPU_NODE_SRC_CURR
 };
 
 struct GPU_BVH{
@@ -90,6 +139,7 @@ struct FlattenContext {
     vector<GPU_BVH_Node> nodes;
     vector<GPU_LeafNode> leaves;
     vector<Triangle> triangles;
+    vector<GPU_LeafNode> dirty_leaves; 
 };
 
 struct GridNodeBase : public TreeNode {
@@ -125,6 +175,16 @@ public:
     inline void set_code(uint64_t code, uint8_t bits){
         this->grid_code = code;
         this->grid_bits = bits;
+    }
+};
+
+struct LeafLessByGridCode {
+    __host__ __device__
+    bool operator()(const GPU_LeafNode& a, const GPU_LeafNode& b) const {
+        if (a.grid_code == b.grid_code) {
+            return a.grid_bits > b.grid_bits; // bitsが多い方が先
+        }
+        return a.grid_code < b.grid_code; // codeが小さい方が先
     }
 };
 
@@ -164,7 +224,7 @@ struct LeafNode : public GridNodeBase {
         }
     }
 
-    Object* get_object(int i){
+    __host__ __device__ Object* get_object(int i){
         return (Object*)&triangles[i];
     }
 
@@ -263,9 +323,11 @@ TreeNode* build_tree_agc(const std::vector<Object*>& objects,
 			 const std::vector<struct Action>&actions,
 			 const AABB& aabb, const AABB& cent_aabb);
 
+
+void reset_grid_tree(TreeNode* node);
 void process_actions(TreeNode* &root, const std::vector<Object*>& objects,
 		     const std::vector<struct Action>& actions,
-		     const AABB& cent_aabb, int frame, vector<LeafNode*>& dirty_leaves);
+		     const AABB& cent_aabb, int frame, vector<LeafNode*>& dirty_leaves, DirtyKeySet& dirty_keys);
 void refit_tree(TreeNode *root, const std::vector<Object*>& objects,
 		const std::vector<struct Action>& actions,
 		const AABB& aabb, const AABB& cent_aabb);
@@ -274,6 +336,8 @@ ReturnRecord build_bvh(TreeNode *node, const AABB& cent_aabb, int level);
 __device__ bool find_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
 bool find_any_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
 
+
+
 void destroy_tree(TreeNode *root);
 void count_nodes(TreeNode *node, 
 		 int& ngrids, int &nbranches, int &nleaves,
@@ -281,4 +345,63 @@ void count_nodes(TreeNode *node,
 float calc_sah_cost(TreeNode *node);
 void print_tree(TreeNode *root, int level = 0);
 int flatten_node(TreeNode* node, FlattenContext& ctx);
+int collect_dirty_leaves(TreeNode* node, vector<LeafNode*>& dirty_leaves);
 
+inline void sort_dirty_leaves_by_grid_code(
+    GPU_LeafNode* d_dirty_leaves,
+    int num_dirty_leaves,
+    cudaStream_t stream = 0
+);
+static std::vector<ulonglong2> build_sorted_dirty_keys_from_set(const DirtyKeySet dirty_keys)
+{
+    std::vector<ulonglong2> out;
+    out.reserve(dirty_keys.size());
+
+    for (const auto& k : dirty_keys) {
+        out.push_back(make_ulonglong2(
+            (unsigned long long)k.code,
+            (unsigned long long)k.bits
+        ));
+    }
+
+    auto less_key = [](const ulonglong2& a, const ulonglong2& b) {
+        if (a.y != b.y) return a.y < b.y; // bits first
+        return a.x < b.x;                 // then code
+    };
+    auto equal_key = [](const ulonglong2& a, const ulonglong2& b) {
+        return a.x == b.x && a.y == b.y;
+    };
+
+    std::sort(out.begin(), out.end(), less_key);
+    out.erase(std::unique(out.begin(), out.end(), equal_key), out.end());
+
+    return out;
+}
+
+__global__ void kernel_build_initial_clusters_from_leaves(
+    const GPU_LeafNode* leaves,
+    int num_leaves,
+    GPU_Cluster* clusters
+);
+
+struct DeviceScene;
+struct Scene;
+
+__global__ void kernel_set_bvh_root_from_final_cluster(
+    DeviceScene* d_scene,
+    const GPU_Cluster* d_clusters,
+    int n_clusters
+);
+
+void build_bvh_on_gpu(
+    DeviceScene* d_scene,
+    DeviceScene& h_scene,
+    const std::vector<LeafNode*>& dirty_leaves_cpu,
+    const std::vector<ulonglong2>& h_dirty_keys,
+    cudaStream_t stream
+);
+
+void build_initial_bvh_gpu(Scene scene, DeviceScene* d_scene, DeviceScene& h_scene, cudaStream_t stream, const vector<ulonglong2>& h_dirty_keys);
+
+__global__ void init_dirty_leaf_aabbs_kernel(GPU_LeafNode* dirty_leaves, int num_dirty_leaves);
+void promote_curr_to_prev(DeviceScene& h_scene);
