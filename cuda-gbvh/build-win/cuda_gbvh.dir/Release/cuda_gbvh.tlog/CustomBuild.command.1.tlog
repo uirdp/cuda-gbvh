@@ -1,0 +1,10 @@
+^D:\DEV\UNIV\NISIM\CUDA-GBVH\CUDA-GBVH\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/dev/univ/nisim/cuda-gbvh/cuda-gbvh -BD:/dev/univ/nisim/cuda-gbvh/cuda-gbvh/build-win --check-stamp-file D:/dev/univ/nisim/cuda-gbvh/cuda-gbvh/build-win/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

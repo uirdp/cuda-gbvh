@@ -1,4 +1,42 @@
 #include "includes/renderer.cuh"
+#include <cerrno>
+#include <cstring>
+
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
+static bool ensure_dir_exists(const std::string& dir_path) {
+    if (dir_path.empty()) return true;
+
+    std::string current;
+    for (size_t i = 0; i < dir_path.size(); ++i) {
+        const char c = dir_path[i];
+        if (c == '/' || c == '\\') {
+            if (!current.empty()) {
+#ifdef _WIN32
+                if (_mkdir(current.c_str()) != 0 && errno != EEXIST) return false;
+#else
+                if (mkdir(current.c_str(), 0755) != 0 && errno != EEXIST) return false;
+#endif
+            }
+        } else {
+            current += c;
+        }
+    }
+
+    if (!current.empty()) {
+#ifdef _WIN32
+        if (_mkdir(current.c_str()) != 0 && errno != EEXIST) return false;
+#else
+        if (mkdir(current.c_str(), 0755) != 0 && errno != EEXIST) return false;
+#endif
+    }
+    return true;
+}
 
 __global__ void render_image(vec3* framebuffer, int image_width, int image_height, CameraParameter cam_params, DeviceScene* d_scene, int frame){
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -22,6 +60,14 @@ __global__ void render_image(vec3* framebuffer, int image_width, int image_heigh
 }
 
 void export_to_ppm(string filename, vec3* framebuffers, int image_width, int image_height, int num_frames){
+    size_t slash_pos = filename.find_last_of("/\\");
+    if (slash_pos != std::string::npos) {
+        std::string out_dir = filename.substr(0, slash_pos);
+        if (!ensure_dir_exists(out_dir)) {
+            fprintf(stderr, "Error: Could not create output directory %s (%s).\n", out_dir.c_str(), std::strerror(errno));
+            return;
+        }
+    }
 
     for(int f = 0; f < num_frames - 1; f++){
         string frame_filename = filename + "_" + std::to_string(f) + ".ppm";

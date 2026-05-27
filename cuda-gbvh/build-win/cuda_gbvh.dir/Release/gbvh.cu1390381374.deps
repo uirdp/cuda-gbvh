@@ -1,0 +1,359 @@
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\assert.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_malloc.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_math.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_memcpy_s.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_memory.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_search.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_share.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_startup.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_stdio_config.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_terminate.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wconio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wctype.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wdirect.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wprocess.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wstdio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wstdlib.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wstring.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\corecrt_wtime.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\crtdbg.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\ctype.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\errno.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\float.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\locale.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\malloc.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\math.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\process.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\share.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stddef.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stdio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\stdlib.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\string.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\sys\stat.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\sys\types.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\time.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\wchar.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\algorithm
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\ammintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\array
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\atomic
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cassert
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cctype
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cerrno
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cfloat
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\climits
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\clocale
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cmath
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\complex
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\concurrencysal.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\crtdefs.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cstddef
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cstdint
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cstdio
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cstdlib
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cstring
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\ctime
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\cwchar
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\eh.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\emmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\exception
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\functional
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\immintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\initializer_list
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\intrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\intrin0.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\intrin0.inl.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\ios
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\iosfwd
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\iostream
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\istream
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\iterator
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\limits
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\limits.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\map
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\memory
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\mmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\mutex
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\new
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\nmmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\ostream
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\pmmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\ratio
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\sal.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\setjmp.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\smmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\sstream
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\stdexcept
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\stdint.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\streambuf
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\string
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\system_error
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\thread
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\tmmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\tuple
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\typeinfo
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\type_traits
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\use_ansi.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\utility
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vadefs.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime_exception.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime_new.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime_new_debug.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime_startup.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime_string.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vcruntime_typeinfo.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\vector
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\wmmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xatomic.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xcall_once.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xerrc.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xfacet
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xiosbase
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xkeycheck.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xlocale
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xlocinfo
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xlocnum
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xmemory
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xmmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xstring
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xthreads.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xtimec.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xtr1common
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xtree
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\xutility
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\ymath.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\yvals.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\yvals_core.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\zmmintrin.h
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_bit_utils.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_chrono.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_heap_algorithms.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_iter_core.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_minmax.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_ostream.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_sanitizer_annotate_container.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_string_view.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_system_error_abi.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_threads_core.hpp
+C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Tools\MSVC\14.44.35128\include\__msvc_xlocinfo_types.hpp
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\builtin_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\channel_descriptor.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\common_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\cudacc_ext.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\device_double_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\device_double_functions.hpp
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\device_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\device_functions.hpp
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\host_config.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\host_defines.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\math_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\math_functions.hpp
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\sm_100_rt.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\sm_70_rt.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\sm_80_rt.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\crt\sm_90_rt.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\cuda.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\cuda_device_runtime_api.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\cuda_runtime.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\cuda_runtime_api.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\device_atomic_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\device_launch_parameters.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\device_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\driver_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\driver_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\library_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_20_atomic_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_20_intrinsics.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_30_intrinsics.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_32_atomic_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_32_intrinsics.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_35_atomic_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_35_intrinsics.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_60_atomic_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\sm_61_intrinsics.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\surface_indirect_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\surface_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\texture_indirect_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\texture_types.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\vector_functions.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\vector_functions.hpp
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\include\vector_types.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\aabb.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\bvtree.cuh
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\check_cuda.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\constants.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\common.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\compute_common.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\compute_vector_decl.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\compute_vector_relational.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_common.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_exponential.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_geometric.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_integer.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_matrix.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_packing.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_trigonometric.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\func_vector_relational.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\qualifier.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\setup.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_half.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_half.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat2x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat2x2.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat2x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat2x3.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat2x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat2x4.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat3x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat3x2.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat3x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat3x3.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat3x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat3x4.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat4x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat4x2.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat4x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat4x3.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat4x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_mat4x4.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec1.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec1.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec2.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec3.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\type_vec4.inl
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\_fixes.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\detail\_vectorize.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\exponential.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double2x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double2x2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double2x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double2x3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double2x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double2x4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double3x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double3x2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double3x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double3x3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double3x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double3x4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double4x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double4x2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double4x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double4x3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double4x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_double4x4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float2x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float2x2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float2x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float2x3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float2x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float2x4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float3x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float3x2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float3x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float3x3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float3x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float3x4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float4x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float4x2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float4x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float4x3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float4x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\matrix_float4x4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\scalar_int_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\scalar_uint_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_bool2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_bool2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_bool3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_bool3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_bool4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_bool4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_double2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_double2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_double3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_double3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_double4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_double4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_float2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_float2_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_float3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_float3_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_float4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_float4_precision.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_int2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_int2_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_int3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_int3_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_int4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_int4_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_uint2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_uint2_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_uint3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_uint3_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_uint4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\ext\vector_uint4_sized.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\fwd.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\geometric.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\glm.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\integer.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat2x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat2x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat2x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat3x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat3x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat3x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat4x2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat4x3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\mat4x4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\matrix.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\packing.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\simd\platform.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\trigonometric.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\vec2.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\vec3.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\vec4.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\glm\vector_relational.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\base.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\bufferpool.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\check.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\core.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\cvdef.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\cvstd.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\cvstd.inl.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\cvstd_wrapper.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\cv_cpu_dispatch.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\fast_math.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\hal\interface.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\mat.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\mat.inl.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\matx.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\matx.inl.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\neon_utils.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\operations.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\optim.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\ovx.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\persistence.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\saturate.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\traits.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\types.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\utility.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\version.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\core\vsx_utils.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\external\opencv2\opencv_modules.hpp
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\intersection.cuh
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\light.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\material.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\object.cuh
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\paramerters.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\ray.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\scene.cuh
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\texture.h
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\triangle.cuh
+D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\includes\utility.h

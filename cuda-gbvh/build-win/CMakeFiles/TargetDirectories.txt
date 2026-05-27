@@ -1,0 +1,3 @@
+D:/dev/univ/nisim/cuda-gbvh/cuda-gbvh/build-win/CMakeFiles/cuda_gbvh.dir
+D:/dev/univ/nisim/cuda-gbvh/cuda-gbvh/build-win/CMakeFiles/ALL_BUILD.dir
+D:/dev/univ/nisim/cuda-gbvh/cuda-gbvh/build-win/CMakeFiles/ZERO_CHECK.dir

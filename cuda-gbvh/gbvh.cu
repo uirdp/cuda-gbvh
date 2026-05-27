@@ -4,7 +4,12 @@
 #include "includes/external/glm/vec3.hpp"
 
 #include <vector>
+#ifdef _WIN32
+#include <malloc.h>
+#define alloca _alloca
+#else
 #include <alloca.h>
+#endif
 
 using glm::vec3;
 using std::vector;
@@ -253,7 +258,7 @@ public:
     {
         int obj_id;
         CodeType code;
-        operator unsigned CodeType() const { return code; }
+        operator CodeType() const { return code; }
     };
     vector<ObjectInfo> obj_infos;
     int del_start;

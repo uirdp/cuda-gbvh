@@ -160,7 +160,15 @@ int main(int argc, char** argv){
         }
     }
     
-    export_to_ppm("/home/m5291093/cuda-gbvh/cuda-gbvh/build/results/f", framebuffers, image_width, image_height, num_frames);
+    std::string output_prefix;
+#ifdef _WIN32
+    output_prefix = "build\\results\\f";
+#elif __linux__
+    output_prefix = "/home/m5291093/cuda-gbvh/cuda-gbvh/build/results/f";
+#else
+    output_prefix = "build/results/f";
+#endif
+    export_to_ppm(output_prefix, framebuffers, image_width, image_height, num_frames);
 
     CHECK_CUDA(cudaFree(framebuffers));
     free_device_scene(d_scene);
