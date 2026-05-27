@@ -324,7 +324,7 @@ TreeNode* build_tree_agc(const std::vector<Object*>& objects,
 			 const AABB& aabb, const AABB& cent_aabb);
 
 
-
+void reset_grid_tree(TreeNode* node);
 void process_actions(TreeNode* &root, const std::vector<Object*>& objects,
 		     const std::vector<struct Action>& actions,
 		     const AABB& cent_aabb, int frame, vector<LeafNode*>& dirty_leaves, DirtyKeySet& dirty_keys);
@@ -335,6 +335,7 @@ void refit_tree(TreeNode *root, const std::vector<Object*>& objects,
 ReturnRecord build_bvh(TreeNode *node, const AABB& cent_aabb, int level);
 __device__ bool find_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
 bool find_any_intersection(TreeNode *root, const Ray& ray, Intersection &itsc);
+
 
 
 void destroy_tree(TreeNode *root);
