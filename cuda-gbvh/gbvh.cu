@@ -268,24 +268,24 @@ static inline void add_dirty_leaf_key(DirtyKeySet &dirty_keys, LeafNode *leaf)
         leaf->grid_code,
         leaf->leaf_code,
         leaf->grid_bits,
-        DIRTY_KEY_LEAF
-    });
+        DIRTY_KEY_LEAF});
 }
 
-static void add_dirty_leaf_keys_in_subtree(TreeNode* node, DirtyKeySet& dirty_keys)
+static void add_dirty_leaf_keys_in_subtree(TreeNode *node, DirtyKeySet &dirty_keys)
 {
-    if (!node) return;
+    if (!node)
+        return;
 
     if (node->type == NT_LEAF)
     {
-        LeafNode* leaf = (LeafNode*)node;
+        LeafNode *leaf = (LeafNode *)node;
         add_dirty_leaf_key(dirty_keys, leaf);
         return;
     }
 
     if (node->type == NT_GRID)
     {
-        GridNode* grid = (GridNode*)node;
+        GridNode *grid = (GridNode *)node;
 
         for (int i = 0; i < NDIV * NDIV * NDIV; ++i)
         {
@@ -384,7 +384,7 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         delete_object(grid->cells[idx], obj, glevel + 1, dirty_leaves, dirty_keys);
         if (grid->nobjs == 0)
         {
-            add_dirty_leaf_keys_in_subtree((TreeNode*)grid, dirty_keys);
+            add_dirty_leaf_keys_in_subtree((TreeNode *)grid, dirty_keys);
             if (grid->node_alloc_buf)
                 free((void *)grid->node_alloc_buf);
             delete grid;
@@ -392,7 +392,7 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         }
         else if (grid->nobjs <= MAX_LEAF_SIZE)
         {
-            add_dirty_leaf_keys_in_subtree((TreeNode*)grid, dirty_keys);
+            add_dirty_leaf_keys_in_subtree((TreeNode *)grid, dirty_keys);
 
             LeafNode *leaf = new LeafNode();
             auto code = (grid->grid_code >> GRID_BITS_PER_LEVEL);
@@ -1236,10 +1236,10 @@ static std::vector<int> build_unique_prev_roots_from_dirty_keys(
 }
 
 static void upload_root_indices_and_dirty_keys(
-    const std::vector<int>& h_root_indices,
-    const std::vector<DirtyKey>& h_dirty_keys,
-    int*& d_root_indices,
-    GPU_DirtyKey*& d_dirty_keys)
+    const std::vector<int> &h_root_indices,
+    const std::vector<DirtyKey> &h_dirty_keys,
+    int *&d_root_indices,
+    GPU_DirtyKey *&d_dirty_keys)
 {
     d_root_indices = nullptr;
     d_dirty_keys = nullptr;
@@ -1248,30 +1248,26 @@ static void upload_root_indices_and_dirty_keys(
     {
         CHECK_CUDA(cudaMalloc(
             &d_root_indices,
-            sizeof(int) * h_root_indices.size()
-        ));
+            sizeof(int) * h_root_indices.size()));
 
         CHECK_CUDA(cudaMemcpy(
             d_root_indices,
             h_root_indices.data(),
             sizeof(int) * h_root_indices.size(),
-            cudaMemcpyHostToDevice
-        ));
+            cudaMemcpyHostToDevice));
     }
 
     if (!h_dirty_keys.empty())
     {
         CHECK_CUDA(cudaMalloc(
             &d_dirty_keys,
-            sizeof(GPU_DirtyKey) * h_dirty_keys.size()
-        ));
+            sizeof(GPU_DirtyKey) * h_dirty_keys.size()));
 
         CHECK_CUDA(cudaMemcpy(
             d_dirty_keys,
             h_dirty_keys.data(),
             sizeof(GPU_DirtyKey) * h_dirty_keys.size(),
-            cudaMemcpyHostToDevice
-        ));
+            cudaMemcpyHostToDevice));
     }
 }
 
@@ -1293,6 +1289,419 @@ static void debug_root_bits_distribution(
     // {
     //     printf("bits=%d : roots=%d\n", kv.first, kv.second);
     // }
+}
+
+static std::unordered_set<uint64_t>
+build_dirty_leaf_code_set(const std::vector<DirtyKey> &h_dirty_keys)
+{
+    std::unordered_set<uint64_t> s;
+    s.reserve(h_dirty_keys.size());
+
+    for (const DirtyKey &k : h_dirty_keys)
+    {
+        if (k.type == DIRTY_KEY_LEAF)
+            s.insert(k.leaf_code);
+    }
+
+    return s;
+}
+
+static bool subtree_contains_dirty_leaf_cpu(
+    int root_node_idx,
+    const std::vector<GPU_BVH_Node> &prev_nodes,
+    const std::vector<GPU_LeafNode> &prev_leaves,
+    const std::unordered_set<uint64_t> &dirty_leaf_codes,
+    int *out_dirty_leaf_idx = nullptr,
+    uint64_t *out_dirty_leaf_code = nullptr)
+{
+    if (root_node_idx < 0 || root_node_idx >= (int)prev_nodes.size())
+        return false;
+
+    std::vector<int> stack;
+    stack.push_back(root_node_idx);
+
+    while (!stack.empty())
+    {
+        int node_idx = stack.back();
+        stack.pop_back();
+
+        if (node_idx < 0 || node_idx >= (int)prev_nodes.size())
+            continue;
+
+        const GPU_BVH_Node &n = prev_nodes[node_idx];
+
+        auto check_leaf = [&](int leaf_idx) -> bool
+        {
+            if (leaf_idx < 0 || leaf_idx >= (int)prev_leaves.size())
+                return false;
+
+            const GPU_LeafNode &leaf = prev_leaves[leaf_idx];
+
+            if (dirty_leaf_codes.find(leaf.leaf_code) != dirty_leaf_codes.end())
+            {
+                if (out_dirty_leaf_idx)
+                    *out_dirty_leaf_idx = leaf_idx;
+                if (out_dirty_leaf_code)
+                    *out_dirty_leaf_code = leaf.leaf_code;
+                return true;
+            }
+
+            return false;
+        };
+
+        if (n.left_type == GPU_CHILD_LEAF)
+        {
+            if (check_leaf(n.left_idx))
+                return true;
+        }
+        else
+        {
+            if (n.left_idx >= 0)
+                stack.push_back(n.left_idx);
+        }
+
+        if (n.right_type == GPU_CHILD_LEAF)
+        {
+            if (check_leaf(n.right_idx))
+                return true;
+        }
+        else
+        {
+            if (n.right_idx >= 0)
+                stack.push_back(n.right_idx);
+        }
+    }
+
+    return false;
+}
+
+static void debug_check_affected_internal_clusters_cpu(
+    GPU_Cluster *d_affected_clusters,
+    int num_affected_clusters,
+    const std::vector<GPU_BVH_Node> &h_prev_nodes,
+    const std::vector<GPU_LeafNode> &h_prev_leaves,
+    const std::vector<DirtyKey> &h_dirty_keys)
+{
+    if (!d_affected_clusters || num_affected_clusters <= 0)
+        return;
+
+    std::vector<GPU_Cluster> h_clusters(num_affected_clusters);
+
+    CHECK_CUDA(cudaMemcpy(
+        h_clusters.data(),
+        d_affected_clusters,
+        sizeof(GPU_Cluster) * num_affected_clusters,
+        cudaMemcpyDeviceToHost));
+
+    auto dirty_leaf_codes = build_dirty_leaf_code_set(h_dirty_keys);
+
+    int checked_internal = 0;
+    int bad_internal = 0;
+
+    for (int i = 0; i < num_affected_clusters; ++i)
+    {
+        const GPU_Cluster &c = h_clusters[i];
+
+        // leaf cluster は対象外
+        if (c.node_idx < 0)
+            continue;
+
+        // prev internal cluster だけ検査
+        if (c.node_source != GPU_NODE_SRC_PREV)
+            continue;
+
+        checked_internal++;
+
+        int dirty_leaf_idx = -1;
+        uint64_t dirty_leaf_code = 0;
+
+        bool has_dirty = subtree_contains_dirty_leaf_cpu(
+            c.node_idx,
+            h_prev_nodes,
+            h_prev_leaves,
+            dirty_leaf_codes,
+            &dirty_leaf_idx,
+            &dirty_leaf_code);
+
+        if (has_dirty)
+        {
+            bad_internal++;
+
+            if (bad_internal <= 20)
+            {
+                const GPU_BVH_Node &n = h_prev_nodes[c.node_idx];
+
+                printf(
+                    "BAD affected internal cluster[%d]: node_idx=%d "
+                    "node_grid=(%llu,%u) contains dirty leaf_idx=%d leaf_code=%llu\n",
+                    i,
+                    c.node_idx,
+                    (unsigned long long)n.grid_code,
+                    (unsigned)n.grid_bits,
+                    dirty_leaf_idx,
+                    (unsigned long long)dirty_leaf_code);
+            }
+        }
+    }
+
+    printf("=== affected internal subtree dirty check ===\n");
+    printf("checked internal clusters = %d\n", checked_internal);
+    printf("bad internal clusters     = %d\n", bad_internal);
+    printf("=============================================\n");
+}
+
+// static std::unordered_set<uint64_t>
+// build_dirty_leaf_code_set(const std::vector<DirtyKey> &h_dirty_keys)
+// {
+//     std::unordered_set<uint64_t> s;
+//     s.reserve(h_dirty_keys.size());
+
+//     for (const DirtyKey &k : h_dirty_keys)
+//     {
+//         if (k.type == DIRTY_KEY_LEAF)
+//         {
+//             s.insert(k.leaf_code);
+//         }
+//     }
+
+//     return s;
+// }
+
+static GPU_Cluster make_cluster_from_prev_leaf_host(
+    const std::vector<GPU_LeafNode> &prev_leaves,
+    int leaf_idx)
+{
+    const GPU_LeafNode &leaf = prev_leaves[leaf_idx];
+
+    GPU_Cluster c{};
+    c.aabb = leaf.aabb;
+    c.grid_code = leaf.grid_code;
+    c.grid_bits = leaf.grid_bits;
+
+    c.leaf_idx = leaf_idx; // ここでは prev_complete_leaves 上の index
+    c.node_idx = -1;
+    c.node_source = GPU_NODE_SRC_NONE;
+
+    return c;
+}
+
+static GPU_Cluster make_cluster_from_prev_node_host(
+    const std::vector<GPU_BVH_Node> &prev_nodes,
+    int node_idx)
+{
+    const GPU_BVH_Node &node = prev_nodes[node_idx];
+
+    GPU_Cluster c{};
+    c.aabb = node.aabb;
+    c.grid_code = node.grid_code;
+    c.grid_bits = node.grid_bits;
+
+    c.leaf_idx = -1;
+    c.node_idx = node_idx;
+    c.node_source = GPU_NODE_SRC_PREV;
+
+    return c;
+}
+
+static bool expand_subtree_to_clean_leaf_clusters_cpu(
+    int root_node_idx,
+    const std::vector<GPU_BVH_Node> &prev_nodes,
+    const std::vector<GPU_LeafNode> &prev_leaves,
+    const std::unordered_set<uint64_t> &dirty_leaf_codes,
+    std::vector<GPU_Cluster> &out_clean_leaf_clusters,
+    int &dirty_leaf_count,
+    int &clean_leaf_count)
+{
+    if (root_node_idx < 0 || root_node_idx >= (int)prev_nodes.size())
+        return false;
+
+    bool found_dirty = false;
+
+    std::vector<int> stack;
+    stack.push_back(root_node_idx);
+
+    while (!stack.empty())
+    {
+        int node_idx = stack.back();
+        stack.pop_back();
+
+        if (node_idx < 0 || node_idx >= (int)prev_nodes.size())
+            continue;
+
+        const GPU_BVH_Node &node = prev_nodes[node_idx];
+
+        auto process_leaf = [&](int leaf_idx)
+        {
+            if (leaf_idx < 0 || leaf_idx >= (int)prev_leaves.size())
+                return;
+
+            const GPU_LeafNode &leaf = prev_leaves[leaf_idx];
+
+            if (dirty_leaf_codes.find(leaf.leaf_code) != dirty_leaf_codes.end())
+            {
+                found_dirty = true;
+                dirty_leaf_count++;
+                return;
+            }
+
+            out_clean_leaf_clusters.push_back(
+                make_cluster_from_prev_leaf_host(prev_leaves, leaf_idx));
+            clean_leaf_count++;
+        };
+
+        if (node.left_type == GPU_CHILD_LEAF)
+        {
+            process_leaf(node.left_idx);
+        }
+        else if (node.left_idx >= 0)
+        {
+            stack.push_back(node.left_idx);
+        }
+
+        if (node.right_type == GPU_CHILD_LEAF)
+        {
+            process_leaf(node.right_idx);
+        }
+        else if (node.right_idx >= 0)
+        {
+            stack.push_back(node.right_idx);
+        }
+    }
+
+    return found_dirty;
+}
+
+static void filter_affected_clusters_remove_dirty_cpu(
+    GPU_Cluster *&d_affected_clusters,
+    int &num_affected_clusters,
+    const std::vector<GPU_BVH_Node> &h_prev_nodes,
+    const std::vector<GPU_LeafNode> &h_prev_leaves,
+    const std::vector<DirtyKey> &h_dirty_keys)
+{
+    if (!d_affected_clusters || num_affected_clusters <= 0)
+        return;
+
+    std::vector<GPU_Cluster> h_clusters(num_affected_clusters);
+
+    CHECK_CUDA(cudaMemcpy(
+        h_clusters.data(),
+        d_affected_clusters,
+        sizeof(GPU_Cluster) * num_affected_clusters,
+        cudaMemcpyDeviceToHost));
+
+    auto dirty_leaf_codes = build_dirty_leaf_code_set(h_dirty_keys);
+
+    std::vector<GPU_Cluster> filtered;
+    filtered.reserve(h_clusters.size());
+
+    int kept_leaf = 0;
+    int skipped_dirty_leaf = 0;
+
+    int kept_clean_internal = 0;
+    int expanded_dirty_internal = 0;
+
+    int expanded_clean_leaf = 0;
+    int expanded_dirty_leaf = 0;
+
+    for (int i = 0; i < num_affected_clusters; ++i)
+    {
+        const GPU_Cluster &c = h_clusters[i];
+
+        // -------------------------------
+        // affected leaf cluster
+        // -------------------------------
+        if (c.leaf_idx >= 0)
+        {
+            int leaf_idx = c.leaf_idx;
+
+            if (leaf_idx < 0 || leaf_idx >= (int)h_prev_leaves.size())
+                continue;
+
+            const GPU_LeafNode &leaf = h_prev_leaves[leaf_idx];
+
+            if (dirty_leaf_codes.find(leaf.leaf_code) != dirty_leaf_codes.end())
+            {
+                skipped_dirty_leaf++;
+                continue;
+            }
+
+            filtered.push_back(c);
+            kept_leaf++;
+            continue;
+        }
+
+        // -------------------------------
+        // affected internal cluster
+        // -------------------------------
+        if (c.node_idx >= 0 && c.node_source == GPU_NODE_SRC_PREV)
+        {
+            std::vector<GPU_Cluster> clean_leaf_clusters;
+            int local_dirty_leaf_count = 0;
+            int local_clean_leaf_count = 0;
+
+            bool has_dirty = expand_subtree_to_clean_leaf_clusters_cpu(
+                c.node_idx,
+                h_prev_nodes,
+                h_prev_leaves,
+                dirty_leaf_codes,
+                clean_leaf_clusters,
+                local_dirty_leaf_count,
+                local_clean_leaf_count);
+
+            if (!has_dirty)
+            {
+                // subtree 全体が clean なので internal cluster のまま残す
+                filtered.push_back(c);
+                kept_clean_internal++;
+            }
+            else
+            {
+                // dirty を含む internal cluster は丸ごと使わない。
+                // clean leaf だけに展開して追加する。
+                filtered.insert(
+                    filtered.end(),
+                    clean_leaf_clusters.begin(),
+                    clean_leaf_clusters.end());
+
+                expanded_dirty_internal++;
+                expanded_clean_leaf += local_clean_leaf_count;
+                expanded_dirty_leaf += local_dirty_leaf_count;
+            }
+
+            continue;
+        }
+
+        // 不正 cluster は捨てる
+    }
+
+    printf("=== filter affected clusters remove dirty ===\n");
+    printf("before affected clusters      = %d\n", num_affected_clusters);
+    printf("after affected clusters       = %zu\n", filtered.size());
+    printf("kept leaf clusters            = %d\n", kept_leaf);
+    printf("skipped dirty leaf clusters   = %d\n", skipped_dirty_leaf);
+    printf("kept clean internal clusters  = %d\n", kept_clean_internal);
+    printf("expanded dirty internal nodes = %d\n", expanded_dirty_internal);
+    printf("expanded clean leaf clusters  = %d\n", expanded_clean_leaf);
+    printf("excluded dirty leaves         = %d\n", expanded_dirty_leaf);
+    printf("============================================\n");
+
+    CHECK_CUDA(cudaFree(d_affected_clusters));
+    d_affected_clusters = nullptr;
+
+    num_affected_clusters = (int)filtered.size();
+
+    if (num_affected_clusters > 0)
+    {
+        CHECK_CUDA(cudaMalloc(
+            &d_affected_clusters,
+            sizeof(GPU_Cluster) * num_affected_clusters));
+
+        CHECK_CUDA(cudaMemcpy(
+            d_affected_clusters,
+            filtered.data(),
+            sizeof(GPU_Cluster) * num_affected_clusters,
+            cudaMemcpyHostToDevice));
+    }
 }
 
 void collect_affected_clusters_from_prev(
@@ -1441,6 +1850,24 @@ void collect_affected_clusters_from_prev(
     CHECK_CUDA(cudaFree(d_debug_counts));
 
     CHECK_CUDA(cudaMemcpy(&num_affected_clusters, d_num_out_clusters, sizeof(int), cudaMemcpyDeviceToHost));
+
+    std::vector<GPU_LeafNode> h_prev_leaves(h_scene.num_prev_complete_leaves);
+
+    if (h_scene.num_prev_complete_leaves > 0)
+    {
+        CHECK_CUDA(cudaMemcpy(
+            h_prev_leaves.data(),
+            h_scene.prev_complete_leaves,
+            sizeof(GPU_LeafNode) * h_scene.num_prev_complete_leaves,
+            cudaMemcpyDeviceToHost));
+    }
+
+    filter_affected_clusters_remove_dirty_cpu(
+        d_affected_clusters,
+        num_affected_clusters,
+        h_prev_nodes,
+        h_prev_leaves,
+        h_dirty_keys);
 
     // printf("collect_affected: roots=%zu dirty_leaves=%zu dirty_keys=%zu\n",
     //        h_root_indices.size(),
@@ -2550,7 +2977,7 @@ void build_bvh_on_gpu(
     GPU_Cluster *d_merged_clusters = nullptr;
 
     // ------------------------------------------------------------
-    // 2. prev completed BVH があるなめEaffected clusters を集める
+    // 2. prev completed BVH があるなら affected clusters を集める
     // ------------------------------------------------------------
     int num_prev_nodes = 0;
     if (h_scene.num_prev_bvh_nodes)
@@ -2567,14 +2994,11 @@ void build_bvh_on_gpu(
         (num_prev_nodes > 0) &&
         (h_scene.num_prev_complete_leaves > 0);
 
-    // printf("has_prev_bvh=%d prev_nodes=%p prev_leaves=%p num_prev_nodes=%d num_prev_leaves=%d\n",
-    //        (int)has_prev_bvh,
-    //        (void *)h_scene.prev_bvh_nodes,
-    //        (void *)h_scene.prev_complete_leaves,
-    //        num_prev_nodes,
-    //        h_scene.num_prev_complete_leaves);
+    std::vector<GPU_BVH_Node> h_prev_nodes;
+    std::vector<GPU_LeafNode> h_prev_leaves;
 
     auto start_time = std::chrono::high_resolution_clock::now();
+
     if (has_prev_bvh)
     {
         collect_affected_clusters_from_prev(
@@ -2584,11 +3008,50 @@ void build_bvh_on_gpu(
             d_affected_clusters,
             num_affected_clusters,
             stream);
+
+        CHECK_CUDA(cudaStreamSynchronize(stream));
+
+        // debug 用に prev nodes/leaves を CPU へ戻す
+        download_prev_nodes(h_scene, h_prev_nodes);
+
+        h_prev_leaves.resize(h_scene.num_prev_complete_leaves);
+        CHECK_CUDA(cudaMemcpy(
+            h_prev_leaves.data(),
+            h_scene.prev_complete_leaves,
+            sizeof(GPU_LeafNode) * h_scene.num_prev_complete_leaves,
+            cudaMemcpyDeviceToHost));
+
+        debug_check_affected_internal_clusters_cpu(
+            d_affected_clusters,
+            num_affected_clusters,
+            h_prev_nodes,
+            h_prev_leaves,
+            h_dirty_keys);
     }
+
     CHECK_KERNEL_SYNC();
+
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
     printf("Time for collecting affected clusters: %.3f ms\n", elapsed.count());
+
+    // std::vector<GPU_LeafNode> h_prev_leaves(h_scene.num_prev_complete_leaves);
+
+    if (h_scene.num_prev_complete_leaves > 0)
+    {
+        CHECK_CUDA(cudaMemcpy(
+            h_prev_leaves.data(),
+            h_scene.prev_complete_leaves,
+            sizeof(GPU_LeafNode) * h_scene.num_prev_complete_leaves,
+            cudaMemcpyDeviceToHost));
+    }
+
+    debug_check_affected_internal_clusters_cpu(
+        d_affected_clusters,
+        num_affected_clusters,
+        h_prev_nodes,
+        h_prev_leaves,
+        h_dirty_keys);
 
     build_frame_leaves(
         d_scene,
@@ -2597,6 +3060,25 @@ void build_bvh_on_gpu(
         num_affected_clusters,
         stream);
     CHECK_KERNEL_SYNC();
+
+    std::vector<GPU_LeafNode> h_frame(h_scene.num_frame_leaves);
+
+    cudaMemcpy(
+        h_frame.data(),
+        h_scene.frame_leaves,
+        sizeof(GPU_LeafNode) * h_scene.num_frame_leaves,
+        cudaMemcpyDeviceToHost);
+
+    for (int i = 0; i < 20; i++)
+    {
+        printf(
+            "leaf[%d] leaf_code=%llu grid=(%llu,%u) tris=%d\n",
+            i,
+            (unsigned long long)h_frame[i].leaf_code,
+            (unsigned long long)h_frame[i].grid_code,
+            h_frame[i].grid_bits,
+            h_frame[i].tri_count);
+    }
 
     // ------------------------------------------------------------
     // 3. dirty + affected を連絁E
@@ -2785,27 +3267,34 @@ struct MaterializeStats
     long long reused_curr_leaf_count = 0;
     long long reused_curr_tri_count = 0;
 
+    long long skipped_duplicate_prev_leaf_count = 0;
+    long long skipped_duplicate_prev_tri_count = 0;
+
     long long materialized_node_count = 0;
 };
 
 static void debug_duplicate_leaf_codes(
-    const std::vector<GPU_LeafNode>& leaves
-){
+    const std::vector<GPU_LeafNode> &leaves)
+{
     std::unordered_map<uint64_t, int> counts;
 
-    for (const auto& leaf : leaves) {
+    for (const auto &leaf : leaves)
+    {
         counts[leaf.leaf_code]++;
     }
 
     int dup_codes = 0;
     int dup_leaves = 0;
 
-    for (auto& kv : counts) {
-        if (kv.second > 1) {
+    for (auto &kv : counts)
+    {
+        if (kv.second > 1)
+        {
             dup_codes++;
             dup_leaves += kv.second;
 
-            if (dup_codes <= 20) {
+            if (dup_codes <= 20)
+            {
                 printf("DUP leaf_code=%llu count=%d\n",
                        (unsigned long long)kv.first,
                        kv.second);
@@ -2820,7 +3309,202 @@ static void debug_duplicate_leaf_codes(
            counts.size());
 }
 
+struct LeafGridKey
+{
+    uint64_t code;
+    uint8_t bits;
+
+    bool operator==(const LeafGridKey &other) const
+    {
+        return code == other.code && bits == other.bits;
+    }
+};
+
+struct LeafGridKeyHash
+{
+    size_t operator()(const LeafGridKey &k) const
+    {
+        size_t h = std::hash<uint64_t>{}(k.code);
+        h ^= std::hash<int>{}((int)k.bits) + 0x9e3779b9 + (h << 6) + (h >> 2);
+        return h;
+    }
+};
+
 // prevとcurrからfinal BVHを構築
+// static int materialize_node_recursive(
+//     NodeRef ref,
+//     const std::vector<GPU_BVH_Node> &h_prev_nodes,
+//     const std::vector<GPU_BVH_Node> &h_curr_nodes,
+//     const std::vector<GPU_LeafNode> &h_prev_leaves,
+//     const std::vector<GPU_LeafNode> &h_curr_leaves, // 追加: frame_leaves
+//     std::vector<GPU_LeafNode> &h_final_leaves,
+//     std::vector<GPU_BVH_Node> &h_final_nodes,
+//    // std::unordered_set<uint64_t> &final_leaf_codes, // 追加: 重複コード検出用
+//     std::unordered_map<NodeRef, int, NodeRefHash> &node_remap,
+//     MaterializeStats &stats)
+// {
+//     if (ref.source == GPU_NODE_SRC_PREV)
+//     {
+//         if (ref.idx < 0 || ref.idx >= (int)h_prev_nodes.size())
+//         {
+//             printf("ERROR: prev node idx out of range: idx=%d size=%zu\n",
+//                    ref.idx, h_prev_nodes.size());
+//             return -1;
+//         }
+//     }
+//     else if (ref.source == GPU_NODE_SRC_CURR)
+//     {
+//         if (ref.idx < 0 || ref.idx >= (int)h_curr_nodes.size())
+//         {
+//             printf("ERROR: curr node idx out of range: idx=%d size=%zu\n",
+//                    ref.idx, h_curr_nodes.size());
+//             return -1;
+//         }
+//     }
+//     else
+//     {
+//         printf("ERROR: invalid node source=%d idx=%d\n", ref.source, ref.idx);
+//         return -1;
+//     }
+
+//     auto it = node_remap.find(ref);
+//     if (it != node_remap.end())
+//     {
+//         return it->second;
+//     }
+
+//     const GPU_BVH_Node *src = nullptr;
+
+//     if (ref.source == GPU_NODE_SRC_PREV)
+//     {
+//         src = &h_prev_nodes[ref.idx];
+//     }
+//     else if (ref.source == GPU_NODE_SRC_CURR)
+//     {
+//         src = &h_curr_nodes[ref.idx];
+//     }
+//     else
+//     {
+//         return -1;
+//     }
+
+//     GPU_BVH_Node out{};
+//     out.aabb = src->aabb;
+//     out.grid_code = src->grid_code;
+//     out.grid_bits = src->grid_bits;
+
+//     auto materialize_child = [&](int child_idx, int child_type, int child_source,
+//                                  int &out_idx, int &out_type, int &out_source)
+//     {
+//         if (child_idx < 0)
+//         {
+//             out_idx = -1;
+//             out_type = child_type;
+//             out_source = GPU_NODE_SRC_NONE;
+//             return;
+//         }
+
+//         if (child_type == GPU_CHILD_LEAF)
+//         {
+//             if (ref.source == GPU_NODE_SRC_PREV)
+//             {
+//                 if (child_idx < 0 || child_idx >= (int)h_prev_leaves.size())
+//                 {
+//                     printf("ERROR: prev leaf idx out of range: idx=%d size=%zu\n",
+//                            child_idx, h_prev_leaves.size());
+//                     out_idx = -1;
+//                     out_type = GPU_CHILD_LEAF;
+//                     out_source = GPU_NODE_SRC_NONE;
+//                     return;
+//                 }
+
+//                 const GPU_LeafNode &prev_leaf = h_prev_leaves[child_idx];
+
+//                 int new_leaf_idx = (int)h_final_leaves.size();
+//                 h_final_leaves.push_back(prev_leaf);
+
+//                 stats.copied_prev_leaf_count++;
+//                 stats.copied_prev_tri_count += prev_leaf.tri_count;
+
+//                 out_idx = new_leaf_idx;
+//                 out_type = GPU_CHILD_LEAF;
+//                 out_source = GPU_NODE_SRC_NONE;
+//             }
+//             else
+//             {
+//                 if (child_idx < 0 || child_idx >= (int)h_curr_leaves.size())
+//                 {
+//                     printf("ERROR: curr leaf idx out of range: idx=%d size=%zu\n",
+//                            child_idx, h_curr_leaves.size());
+//                     out_idx = -1;
+//                     out_type = GPU_CHILD_LEAF;
+//                     out_source = GPU_NODE_SRC_NONE;
+//                     return;
+//                 }
+
+//                 const GPU_LeafNode &curr_leaf = h_curr_leaves[child_idx];
+
+//                 stats.reused_curr_leaf_count++;
+//                 stats.reused_curr_tri_count += curr_leaf.tri_count;
+
+//                 out_idx = child_idx;
+//                 out_type = GPU_CHILD_LEAF;
+//                 out_source = GPU_NODE_SRC_NONE;
+//             }
+//             return;
+//         }
+
+//         // 重要:
+//         // prev BVH の中に保存されている CURR source は、
+//         // promote 後は prev 配列内参照として扱う
+//         int effective_child_source = child_source;
+//         if (ref.source == GPU_NODE_SRC_PREV)
+//         {
+//             effective_child_source = GPU_NODE_SRC_PREV;
+//         }
+
+//         NodeRef child_ref{effective_child_source, child_idx};
+
+//         int new_child_idx = materialize_node_recursive(
+//             child_ref,
+//             h_prev_nodes,
+//             h_curr_nodes,
+//             h_prev_leaves,
+//             h_curr_leaves,
+//             h_final_leaves,
+//             h_final_nodes,
+//             node_remap,
+//             stats);
+
+//         out_idx = new_child_idx;
+//         out_type = GPU_CHILD_NODE;
+//         out_source = GPU_NODE_SRC_CURR;
+//     };
+
+//     materialize_child(
+//         src->left_idx,
+//         src->left_type,
+//         src->left_source,
+//         out.left_idx,
+//         out.left_type,
+//         out.left_source);
+
+//     materialize_child(
+//         src->right_idx,
+//         src->right_type,
+//         src->right_source,
+//         out.right_idx,
+//         out.right_type,
+//         out.right_source);
+
+//     int new_idx = (int)h_final_nodes.size();
+//     h_final_nodes.push_back(out);
+//     stats.materialized_node_count++;
+
+//     node_remap[ref] = new_idx;
+//     return new_idx;
+// }
+
 static int materialize_node_recursive(
     NodeRef ref,
     const std::vector<GPU_BVH_Node> &h_prev_nodes,
@@ -2829,6 +3513,7 @@ static int materialize_node_recursive(
     const std::vector<GPU_LeafNode> &h_curr_leaves, // 追加: frame_leaves
     std::vector<GPU_LeafNode> &h_final_leaves,
     std::vector<GPU_BVH_Node> &h_final_nodes,
+    std::unordered_set<uint64_t> &final_leaf_codes, // 追加: 重複コード検出用
     std::unordered_map<NodeRef, int, NodeRefHash> &node_remap,
     MaterializeStats &stats)
 {
@@ -2909,8 +3594,22 @@ static int materialize_node_recursive(
 
                 const GPU_LeafNode &prev_leaf = h_prev_leaves[child_idx];
 
+                // すでに current/frame 側に同じ leaf_code があるなら、
+                // old prev leaf はコピーしない
+                if (final_leaf_codes.find(prev_leaf.leaf_code) != final_leaf_codes.end())
+                {
+                    stats.skipped_duplicate_prev_leaf_count++;
+                    stats.skipped_duplicate_prev_tri_count += prev_leaf.tri_count;
+
+                    out_idx = -1;
+                    out_type = GPU_CHILD_LEAF;
+                    out_source = GPU_NODE_SRC_NONE;
+                    return;
+                }
+
                 int new_leaf_idx = (int)h_final_leaves.size();
                 h_final_leaves.push_back(prev_leaf);
+                final_leaf_codes.insert(prev_leaf.leaf_code);
 
                 stats.copied_prev_leaf_count++;
                 stats.copied_prev_tri_count += prev_leaf.tri_count;
@@ -2962,6 +3661,7 @@ static int materialize_node_recursive(
             h_curr_leaves,
             h_final_leaves,
             h_final_nodes,
+            final_leaf_codes, // 追加: frame_leaves を渡す
             node_remap,
             stats);
 
@@ -3060,6 +3760,17 @@ void materialize_curr_bvh_to_self_contained(
                               cudaMemcpyDeviceToHost));
     }
 
+    std::unordered_set<uint64_t> final_leaf_codes;
+    final_leaf_codes.reserve(h_final_leaves.size() * 2);
+
+    for (const auto &leaf : h_final_leaves)
+    {
+        if (leaf.leaf_code != 0)
+        {
+            final_leaf_codes.insert(leaf.leaf_code);
+        }
+    }
+
     // -------------------------------
     // 5. mixed root から final tree 作成
     // -------------------------------
@@ -3092,6 +3803,7 @@ void materialize_curr_bvh_to_self_contained(
         h_final_leaves, // h_curr_leaves として渡す
         h_final_leaves,
         h_final_nodes,
+        final_leaf_codes,
         node_remap,
         stats);
 

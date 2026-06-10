@@ -603,7 +603,7 @@ int main(int argc, char **argv)
     camera_param.vertical = vec3(0.0, 2.0, 0.0);
     camera_param.origin = vec3(1.5, 2.0, 3.5);
 
-    for (int frame = 0; frame < num_frames; frame++)
+    for (int frame = 0; frame < 10; frame++)
     {
         if (scene.scenario.size() > 2)
         {
@@ -664,12 +664,12 @@ int main(int argc, char **argv)
             CHECK_CUDA(cudaDeviceSynchronize());
 
             materialize_curr_bvh_to_self_contained(d_scene, h_device_scene);
-            debug_validate_curr_bvh(h_device_scene);
+            // debug_validate_curr_bvh(h_device_scene);
             // debug_dirty_keys_bits_distribution(h_dirty_keys);
 
             auto start_render = std::chrono::high_resolution_clock::now();
             
-            debug_frame_leaves_stats(h_device_scene);
+            // debug_frame_leaves_stats(h_device_scene);
             render_image<<<blocks, threads>>>(framebuffers, image_width, image_height, camera_param, d_scene, frame);
             CHECK_CUDA(cudaGetLastError());
             CHECK_CUDA(cudaDeviceSynchronize());
