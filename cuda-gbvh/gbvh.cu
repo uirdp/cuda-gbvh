@@ -4,7 +4,14 @@
 #include "includes/external/glm/vec3.hpp"
 
 #include <vector>
+#ifdef _WIN32
+#include <malloc.h>
+#ifndef alloca
+#define alloca _alloca
+#endif
+#else
 #include <alloca.h>
+#endif
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
@@ -22,6 +29,13 @@
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/functional.h>
 #include <cuda_runtime.h>
+
+#define CHECK_KERNEL_SYNC()                  \
+    do                                       \
+    {                                        \
+        CHECK_CUDA(cudaGetLastError());      \
+        CHECK_CUDA(cudaDeviceSynchronize()); \
+    } while (0)
 
 using glm::vec3;
 using std::unordered_map;
@@ -76,7 +90,7 @@ int collect_dirty_leaves(TreeNode *node, vector<LeafNode *> &dirty_leaves)
             dirty_leaves.push_back(leaf);
             count = 1;
         }
-        // いったんすべてのleafをdirtyとして扱う
+        // ぁE�E�E�E��E�E�E�たんすべてのleafをdirtyとして扱ぁE
         // dirty_leaves.push_back(leaf);
         // count = 1;
     }
@@ -116,7 +130,7 @@ inline static void delete_object_from_leaf(LeafNode *leaf, Object *obj)
 
 inline static void delete_expired_objects(LeafNode *Leaf, int frame)
 {
-    // 後で実装
+    // 後で実裁E
     printf("delete_expired_objects is not implemented yet.\n");
 }
 
@@ -196,6 +210,30 @@ inline static CodeType get_hgrid_code(CodeType x, CodeType y, CodeType z)
 #endif
 }
 
+static inline bool is_valid_grid_bits(uint8_t bits)
+{
+    return bits <= MAX_GRID_LEVEL * GRID_BITS_PER_LEVEL &&
+           bits % GRID_BITS_PER_LEVEL == 0;
+}
+
+static inline void add_dirty_key_checked(
+    DirtyKeySet &dirty_keys,
+    uint64_t code,
+    uint8_t bits,
+    const char *label)
+{
+    if (!is_valid_grid_bits(bits))
+    {
+        printf("BAD DIRTY KEY: label=%s bits=%u code=%llu\n",
+               label,
+               (unsigned)bits,
+               (unsigned long long)code);
+        return; // いったん追加しない
+    }
+
+    dirty_keys.insert(DirtyKey{code, bits});
+}
+
 static inline void add_dirty_key(DirtyKeySet &dirty_keys, uint64_t code, uint8_t bits)
 {
     dirty_keys.insert({code, bits});
@@ -205,16 +243,56 @@ static inline void add_dirty_grid_key(DirtyKeySet &dirty_keys, GridNode *grid)
 {
     if (!grid)
         return;
-    add_dirty_key(dirty_keys, grid->grid_code, grid->grid_bits);
+
+    if (!is_valid_grid_bits(grid->grid_bits))
+    {
+        printf("BAD DIRTY GRID KEY: bits=%u code=%llu\n",
+               (unsigned)grid->grid_bits,
+               (unsigned long long)grid->grid_code);
+        return;
+    }
+
+    dirty_keys.insert(DirtyKey{
+        grid->grid_code,
+        0,
+        grid->grid_bits,
+        DIRTY_KEY_GRID});
 }
 
 static inline void add_dirty_leaf_key(DirtyKeySet &dirty_keys, LeafNode *leaf)
 {
     if (!leaf)
         return;
-    add_dirty_key(dirty_keys, leaf->grid_code, leaf->grid_bits);
+
+    dirty_keys.insert(DirtyKey{
+        leaf->grid_code,
+        leaf->leaf_code,
+        leaf->grid_bits,
+        DIRTY_KEY_LEAF
+    });
 }
 
+static void add_dirty_leaf_keys_in_subtree(TreeNode* node, DirtyKeySet& dirty_keys)
+{
+    if (!node) return;
+
+    if (node->type == NT_LEAF)
+    {
+        LeafNode* leaf = (LeafNode*)node;
+        add_dirty_leaf_key(dirty_keys, leaf);
+        return;
+    }
+
+    if (node->type == NT_GRID)
+    {
+        GridNode* grid = (GridNode*)node;
+
+        for (int i = 0; i < NDIV * NDIV * NDIV; ++i)
+        {
+            add_dirty_leaf_keys_in_subtree(grid->cells[i], dirty_keys);
+        }
+    }
+}
 // -- dirty keys
 
 void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode *> &dirty_leaves, DirtyKeySet &dirty_keys)
@@ -251,7 +329,7 @@ void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode *> 
 
     if (*np == nullptr)
     {
-        // デフォルトでdirtyになっているはず
+        // チE�E�E�E��E�E�E�ォルトでdirtyになってぁE�E�E�E��E�E�E�はぁE
         LeafNode *leaf = new LeafNode();
         add_object_to_leaf(leaf, obj);
         // AIによると修正がいるらしいが、正しいと思う
@@ -269,6 +347,7 @@ void insert_object(TreeNode *&node, Object *obj, int glevel, vector<LeafNode *> 
         // leaf->set_grid_code(parent_code, parent_bits);
         if (leaf->nobjs + 1 > MAX_LEAF_SIZE && glevel < MAX_GRID_LEVEL)
         {
+            add_dirty_leaf_key(dirty_keys, leaf);
             GridNode *grid = new GridNode();
             grid->set_code(path_code, path_bits);
             for (int i = 0; i < leaf->nobjs; i++)
@@ -305,6 +384,7 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         delete_object(grid->cells[idx], obj, glevel + 1, dirty_leaves, dirty_keys);
         if (grid->nobjs == 0)
         {
+            add_dirty_leaf_keys_in_subtree((TreeNode*)grid, dirty_keys);
             if (grid->node_alloc_buf)
                 free((void *)grid->node_alloc_buf);
             delete grid;
@@ -312,6 +392,8 @@ static void delete_object(TreeNode *&node, Object *obj, int glevel, vector<LeafN
         }
         else if (grid->nobjs <= MAX_LEAF_SIZE)
         {
+            add_dirty_leaf_keys_in_subtree((TreeNode*)grid, dirty_keys);
+
             LeafNode *leaf = new LeafNode();
             auto code = (grid->grid_code >> GRID_BITS_PER_LEVEL);
             auto bits = grid->grid_bits - GRID_BITS_PER_LEVEL;
@@ -378,7 +460,7 @@ public:
     {
         int obj_id;
         CodeType code;
-        operator unsigned CodeType() const { return code; }
+        operator CodeType() const { return code; }
     };
     vector<ObjectInfo> obj_infos;
     int del_start;
@@ -398,11 +480,11 @@ public:
         {
             int obj_id = actions[i].obj_id;
 #if !USE_EXPIRE
-            obj_id ^= (obj_id >> 31); // delete のときに負の値になるので1's complementに変換
+            obj_id ^= (obj_id >> 31); // delete のときに負の値になる�Eで1's complementに変換
 #endif
             AABB oaabb = (*objects)[obj_id]->get_aabb();
             vec3 centroid = (oaabb.vmin + oaabb.vmax) * 0.5f;
-            vec3 idx = floor((centroid - cent_aabb.vmin) / grid_dim * (float)resolution); // cent_aabb座標系（？）に移して、正規化[0, 1]して解像度で割ることでインデックスを求めている
+            vec3 idx = floor((centroid - cent_aabb.vmin) / grid_dim * (float)resolution); // cent_aabb座標系�E�E�E�E�E�E�E��E�E�E��E�に移して、正規化[0, 1]して解像度で割ることでインチE�E�E�E��E�E�E�クスを求めてぁE�E�E�E��E�E�E�
             idx = glm::clamp(idx, vec3(0.0f), vec3((float)(resolution - 1)));
             CodeType code = get_hgrid_code((CodeType)idx.x, (CodeType)idx.y, (CodeType)idx.z);
 
@@ -437,7 +519,7 @@ public:
         if (node == nullptr)
         {
             GridNode *root = new GridNode();
-            // root->set_code(0, 0);
+            root->set_code(0, 0);
             node = (TreeNode *)root;
             // node = new GridNode();
         }
@@ -467,7 +549,7 @@ void process_actions(TreeNode *&node,
                      DirtyKeySet &dirty_keys)
 {
     GridBuilder builder(objects, action, cent_aabb, frame);
-    builder.build_serial(node, 0, builder.del_start, action.size(), 0, dirty_leaves, dirty_keys); // これだと（多分）nodeがnullなため動かない
+    builder.build_serial(node, 0, builder.del_start, action.size(), 0, dirty_leaves, dirty_keys); // これだと�E�E�E�E�E�E�E�多�E�E�E�E�E�E�E�E�nodeがnullなため動かなぁE
 }
 
 // agglomerative clustering
@@ -728,6 +810,53 @@ __device__ bool contains_key_u128(const ulonglong2 *arr, int n, const ulonglong2
     return idx < n && key_equal_u128(arr[idx], key);
 }
 
+__host__ __device__ inline bool dirty_key_less(
+    const GPU_DirtyKey &a,
+    const GPU_DirtyKey &b)
+{
+    if (a.type != b.type)
+        return a.type < b.type;
+    if (a.bits != b.bits)
+        return a.bits < b.bits;
+    if (a.code != b.code)
+        return a.code < b.code;
+    return a.leaf_code < b.leaf_code;
+}
+
+__host__ __device__ inline bool dirty_key_equal(
+    const GPU_DirtyKey &a,
+    const GPU_DirtyKey &b)
+{
+    return a.type == b.type &&
+           a.bits == b.bits &&
+           a.code == b.code &&
+           a.leaf_code == b.leaf_code;
+}
+
+__device__ bool contains_dirty_key(
+    const GPU_DirtyKey *keys,
+    int n,
+    const GPU_DirtyKey &key)
+{
+    int l = 0;
+    int r = n;
+
+    while (l < r)
+    {
+        int m = (l + r) >> 1;
+        if (dirty_key_less(keys[m], key))
+        {
+            l = m + 1;
+        }
+        else
+        {
+            r = m;
+        }
+    }
+
+    return l < n && dirty_key_equal(keys[l], key);
+}
+
 __global__ void init_dirty_leaf_aabbs_kernel(GPU_LeafNode *dirty_leaves, int num_dirty_leaves)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -736,8 +865,8 @@ __global__ void init_dirty_leaf_aabbs_kernel(GPU_LeafNode *dirty_leaves, int num
 
     GPU_LeafNode &leaf = dirty_leaves[idx];
 
-    // CPU側で nullptr leaf を GPU_LeafNode{} として詰めている可能性があるので、
-    // tri_count <= 0 は何もしない
+    // CPU側で nullptr leaf めEGPU_LeafNode{} として詰めてぁE�E�E�E��E�E�E�可能性がある�Eで、E
+    // tri_count <= 0 は何もしなぁE
     if (leaf.tri_count <= 0)
     {
         return;
@@ -813,15 +942,110 @@ __device__ inline GPU_Cluster make_cluster_from_prev_node(
     return c;
 }
 
-// affected cluster = dirty leafs + それらの兄弟とその子
+enum
+{
+    DBG_SEEN_LEAF = 0,
+    DBG_SEEN_NODE = 1,
+    DBG_SKIP_DIRTY_LEAF = 2,
+    DBG_SKIP_DIRTY_NODE = 3,
+    DBG_ADD_LEAF = 4,
+    DBG_ADD_NODE = 5,
+    DBG_DUP_LEAF = 6,
+    DBG_DUP_NODE = 7,
+    DBG_COUNT = 8
+};
+
+// affected cluster = dirty leafs + それら�E允E�E�E�E��E�E�E�とそ�E孁E
+// __global__ void kernel_expand_frontier_to_affected_clusters(
+//     const GPU_BVH_Node *prev_nodes,
+//     const GPU_LeafNode *prev_leaves,
+
+//     const int *frontier_cur, // frontier_curには探索中のGPU_ClusterのインチE�E�E�E��E�E�E�クスが�EってぁE�E�E�E��E�E�E�
+//     int frontier_size,
+
+//     const ulonglong2 *dirty_keys,
+//     int num_dirty_keys,
+
+//     int *visited_prev_nodes,
+//     int *visited_prev_leaves,
+
+//     int *frontier_next,
+//     int *d_frontier_next_size,
+
+//     GPU_Cluster *out_clusters,
+//     int *d_num_out_clusters)
+// {
+//     int tid = blockIdx.x * blockDim.x + threadIdx.x;
+//     if (tid >= frontier_size)
+//         return;
+
+//     int node_idx = frontier_cur[tid];
+//     const GPU_BVH_Node &node = prev_nodes[node_idx];
+
+//     auto process_leaf_child = [&](int leaf_idx)
+//     {
+//         if (leaf_idx < 0)
+//             return;
+
+//         ulonglong2 k = make_ulonglong2(
+//             (unsigned long long)prev_leaves[leaf_idx].grid_code,
+//             (unsigned long long)prev_leaves[leaf_idx].grid_bits);
+
+//         if (contains_key_u128(dirty_keys, num_dirty_keys, k))
+//             return; // dirtyなleafはすでにaffected clusterに入ってぁE�E�E�E��E�E�E�はずなのでスキチE�E�E�E�E
+
+//         if (atomicCAS(&visited_prev_leaves[leaf_idx], 0, 1) == 0)
+//         { // 最初に訪れたスレチE�E�E�E��E�E�E�だけがaffected clusterに追加する
+//             int out_idx = atomicAdd(d_num_out_clusters, 1);
+//             out_clusters[out_idx] = make_cluster_from_prev_leaf(prev_leaves, leaf_idx);
+//         }
+
+//     };
+
+//     auto process_node_child = [&](int child_node_idx)
+//     {
+//         if (child_node_idx < 0)
+//             return;
+
+//         ulonglong2 k = make_ulonglong2(
+//             (unsigned long long)prev_nodes[child_node_idx].grid_code,
+//             (unsigned long long)prev_nodes[child_node_idx].grid_bits);
+
+//         bool is_dirty = contains_key_u128(dirty_keys, num_dirty_keys, k);
+
+//         if (atomicCAS(&visited_prev_nodes[child_node_idx], 0, 1) != 0)
+//             return;
+
+//         if (is_dirty)
+//         {
+//             int next_frontier_idx = atomicAdd(d_frontier_next_size, 1);
+//             frontier_next[next_frontier_idx] = child_node_idx;
+//             return;
+//         }
+
+//         int out_idx = atomicAdd(d_num_out_clusters, 1);
+//         out_clusters[out_idx] = make_cluster_from_prev_node(prev_nodes, child_node_idx);
+//     };
+
+//     if (node.left_type == GPU_CHILD_LEAF)
+//         process_leaf_child(node.left_idx);
+//     else
+//         process_node_child(node.left_idx);
+
+//     if (node.right_type == GPU_CHILD_LEAF)
+//         process_leaf_child(node.right_idx);
+//     else
+//         process_node_child(node.right_idx);
+// }
+
 __global__ void kernel_expand_frontier_to_affected_clusters(
     const GPU_BVH_Node *prev_nodes,
     const GPU_LeafNode *prev_leaves,
 
-    const int *frontier_cur, // frontier_curには探索中のGPU_Clusterのインデックスが入っている
+    const int *frontier_cur,
     int frontier_size,
 
-    const ulonglong2 *dirty_keys,
+    const GPU_DirtyKey *dirty_keys,
     int num_dirty_keys,
 
     int *visited_prev_nodes,
@@ -831,13 +1055,18 @@ __global__ void kernel_expand_frontier_to_affected_clusters(
     int *d_frontier_next_size,
 
     GPU_Cluster *out_clusters,
-    int *d_num_out_clusters)
+    int *d_num_out_clusters,
+
+    int *debug_counts)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     if (tid >= frontier_size)
         return;
 
     int node_idx = frontier_cur[tid];
+    if (node_idx < 0)
+        return;
+
     const GPU_BVH_Node &node = prev_nodes[node_idx];
 
     auto process_leaf_child = [&](int leaf_idx)
@@ -845,17 +1074,33 @@ __global__ void kernel_expand_frontier_to_affected_clusters(
         if (leaf_idx < 0)
             return;
 
-        ulonglong2 k = make_ulonglong2(
-            (unsigned long long)prev_leaves[leaf_idx].grid_code,
-            (unsigned long long)prev_leaves[leaf_idx].grid_bits);
+        atomicAdd(&debug_counts[DBG_SEEN_LEAF], 1);
 
-        if (contains_key_u128(dirty_keys, num_dirty_keys, k))
-            return; // dirtyなleafはすでにaffected clusterに入っているはずなのでスキップ
+        const GPU_LeafNode &leaf = prev_leaves[leaf_idx];
+
+        GPU_DirtyKey k{};
+        k.type = DIRTY_KEY_LEAF;
+        k.code = leaf.grid_code;
+        k.bits = leaf.grid_bits;
+        k.leaf_code = leaf.leaf_code;
+
+        if (contains_dirty_key(dirty_keys, num_dirty_keys, k))
+        {
+            atomicAdd(&debug_counts[DBG_SKIP_DIRTY_LEAF], 1);
+            return;
+        }
 
         if (atomicCAS(&visited_prev_leaves[leaf_idx], 0, 1) == 0)
-        { // 最初に訪れたスレッドだけがaffected clusterに追加する
+        {
+            atomicAdd(&debug_counts[DBG_ADD_LEAF], 1);
+
             int out_idx = atomicAdd(d_num_out_clusters, 1);
-            out_clusters[out_idx] = make_cluster_from_prev_leaf(prev_leaves, leaf_idx);
+            out_clusters[out_idx] =
+                make_cluster_from_prev_leaf(prev_leaves, leaf_idx);
+        }
+        else
+        {
+            atomicAdd(&debug_counts[DBG_DUP_LEAF], 1);
         }
     };
 
@@ -864,21 +1109,38 @@ __global__ void kernel_expand_frontier_to_affected_clusters(
         if (child_node_idx < 0)
             return;
 
-        ulonglong2 k = make_ulonglong2(
-            (unsigned long long)prev_nodes[child_node_idx].grid_code,
-            (unsigned long long)prev_nodes[child_node_idx].grid_bits);
+        atomicAdd(&debug_counts[DBG_SEEN_NODE], 1);
 
-        if (contains_key_u128(dirty_keys, num_dirty_keys, k))
-            return; // dirtyなnodeはすでにaffected clusterに入っているはずなのでスキップ
+        const GPU_BVH_Node &child = prev_nodes[child_node_idx];
 
-        if (atomicCAS(&visited_prev_nodes[child_node_idx], 0, 1) == 0)
-        { // 最初に訪れたスレッドだけがaffected clusterに追加する
-            int out_idx = atomicAdd(d_num_out_clusters, 1);
-            out_clusters[out_idx] = make_cluster_from_prev_node(prev_nodes, child_node_idx);
+        GPU_DirtyKey k{};
+        k.type = DIRTY_KEY_GRID;
+        k.code = child.grid_code;
+        k.bits = child.grid_bits;
+        k.leaf_code = 0;
+
+        bool is_dirty = contains_dirty_key(dirty_keys, num_dirty_keys, k);
+
+        if (atomicCAS(&visited_prev_nodes[child_node_idx], 0, 1) != 0)
+        {
+            atomicAdd(&debug_counts[DBG_DUP_NODE], 1);
+            return;
+        }
+
+        if (is_dirty)
+        {
+            atomicAdd(&debug_counts[DBG_SKIP_DIRTY_NODE], 1);
 
             int next_frontier_idx = atomicAdd(d_frontier_next_size, 1);
             frontier_next[next_frontier_idx] = child_node_idx;
+            return;
         }
+
+        atomicAdd(&debug_counts[DBG_ADD_NODE], 1);
+
+        int out_idx = atomicAdd(d_num_out_clusters, 1);
+        out_clusters[out_idx] =
+            make_cluster_from_prev_node(prev_nodes, child_node_idx);
     };
 
     if (node.left_type == GPU_CHILD_LEAF)
@@ -892,7 +1154,7 @@ __global__ void kernel_expand_frontier_to_affected_clusters(
         process_node_child(node.right_idx);
 }
 
-// GPU側のPrevNodeをCPUわがに移す（MAPを使うため）
+// GPU側のPrevNodeをCPUわがに移す！EAPを使ぁE�E�E�E��E�E�E�めE�E�E�E��E�E�E�E
 static void download_prev_nodes(
     const DeviceScene &h_scene,
     std::vector<GPU_BVH_Node> &h_prev_nodes)
@@ -927,7 +1189,7 @@ static void debug_prev_node_key_distribution(
     }
 }
 
-// grid codeとbitsの組み合わせをキーとして、prev_bvh_nodesのインデックスを値とするMAPを作る
+// grid codeとbitsの絁E�E�E�E��E�E�E�合わせをキーとして、prev_bvh_nodesのインチE�E�E�E��E�E�E�クスを値とするMAPを作る
 static unordered_map<NodeKey, int, NodeKeyHash>
 build_prev_node_map(const vector<GPU_BVH_Node> &h_prev_nodes)
 {
@@ -941,71 +1203,102 @@ build_prev_node_map(const vector<GPU_BVH_Node> &h_prev_nodes)
     return prev_node_map;
 }
 
-static std::vector<int> build_unique_prev_parent_roots(
-    const std::vector<LeafNode *> &dirty_leaves,
+static std::vector<int> build_unique_prev_roots_from_dirty_keys(
+    const std::vector<DirtyKey> &h_dirty_keys,
     const std::unordered_map<NodeKey, int, NodeKeyHash> &prev_node_map)
 {
     std::vector<int> roots;
-    roots.reserve(dirty_leaves.size());
+    roots.reserve(h_dirty_keys.size());
 
-    for (LeafNode *leaf : dirty_leaves)
+    for (const DirtyKey &k : h_dirty_keys)
     {
-        if (!leaf)
+        // leaf dirty key は無視
+        if (k.type != DIRTY_KEY_GRID)
             continue;
 
-        uint64_t code = leaf->grid_code;
-        uint8_t bits = leaf->grid_bits;
+        NodeKey key{
+            k.code,
+            k.bits};
 
-        while (true)
+        auto it = prev_node_map.find(key);
+        if (it != prev_node_map.end())
         {
-            NodeKey key{code, bits};
-
-            auto it = prev_node_map.find(key);
-            if (it != prev_node_map.end())
-            {
-                roots.push_back(it->second);
-                break;
-            }
-
-            if (bits < GRID_BITS_PER_LEVEL)
-                break;
-
-            code >>= GRID_BITS_PER_LEVEL;
-            bits -= GRID_BITS_PER_LEVEL;
+            roots.push_back(it->second);
         }
     }
 
     std::sort(roots.begin(), roots.end());
-    roots.erase(std::unique(roots.begin(), roots.end()), roots.end());
+    roots.erase(
+        std::unique(roots.begin(), roots.end()),
+        roots.end());
+
     return roots;
 }
 
 static void upload_root_indices_and_dirty_keys(
-    const vector<int> &h_root_indices,
-    const vector<ulonglong2> &h_dirty_keys,
-    int *&d_root_indices,
-    ulonglong2 *&d_dirty_keys)
+    const std::vector<int>& h_root_indices,
+    const std::vector<DirtyKey>& h_dirty_keys,
+    int*& d_root_indices,
+    GPU_DirtyKey*& d_dirty_keys)
 {
     d_root_indices = nullptr;
     d_dirty_keys = nullptr;
 
     if (!h_root_indices.empty())
     {
-        CHECK_CUDA(cudaMalloc(&d_root_indices, sizeof(int) * h_root_indices.size()));
-        CHECK_CUDA(cudaMemcpy(d_root_indices, h_root_indices.data(), sizeof(int) * h_root_indices.size(), cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMalloc(
+            &d_root_indices,
+            sizeof(int) * h_root_indices.size()
+        ));
+
+        CHECK_CUDA(cudaMemcpy(
+            d_root_indices,
+            h_root_indices.data(),
+            sizeof(int) * h_root_indices.size(),
+            cudaMemcpyHostToDevice
+        ));
     }
 
     if (!h_dirty_keys.empty())
     {
-        CHECK_CUDA(cudaMalloc(&d_dirty_keys, sizeof(ulonglong2) * h_dirty_keys.size()));
-        CHECK_CUDA(cudaMemcpy(d_dirty_keys, h_dirty_keys.data(), sizeof(ulonglong2) * h_dirty_keys.size(), cudaMemcpyHostToDevice));
+        CHECK_CUDA(cudaMalloc(
+            &d_dirty_keys,
+            sizeof(GPU_DirtyKey) * h_dirty_keys.size()
+        ));
+
+        CHECK_CUDA(cudaMemcpy(
+            d_dirty_keys,
+            h_dirty_keys.data(),
+            sizeof(GPU_DirtyKey) * h_dirty_keys.size(),
+            cudaMemcpyHostToDevice
+        ));
     }
+}
+
+static void debug_root_bits_distribution(
+    const std::vector<int> &roots,
+    const std::vector<GPU_BVH_Node> &h_prev_nodes)
+{
+    std::map<int, int> hist;
+
+    for (int idx : roots)
+    {
+        if (idx < 0 || idx >= (int)h_prev_nodes.size())
+            continue;
+        hist[(int)h_prev_nodes[idx].grid_bits]++;
+    }
+
+    // printf("=== root indices bits distribution ===\n");
+    // for (auto &kv : hist)
+    // {
+    //     printf("bits=%d : roots=%d\n", kv.first, kv.second);
+    // }
 }
 
 void collect_affected_clusters_from_prev(
     const DeviceScene &h_scene,
     const vector<LeafNode *> &dirty_leaves_cpu,
-    const vector<ulonglong2> &h_dirty_keys,
+    const vector<DirtyKey> &h_dirty_keys,
     GPU_Cluster *&d_affected_clusters,
     int &num_affected_clusters,
     cudaStream_t stream = 0)
@@ -1025,34 +1318,33 @@ void collect_affected_clusters_from_prev(
     if (num_prev_nodes <= 0)
         return;
 
-    // CPU側にPrevNodeを移す（MAPを使うため）
+    // CPU側にPrevNodeを移す！EAPを使ぁE�E�E�E��E�E�E�めE�E�E�E��E�E�E�E
     vector<GPU_BVH_Node> h_prev_nodes;
     download_prev_nodes(h_scene, h_prev_nodes);
 
-    debug_prev_node_key_distribution(h_prev_nodes);
+    // debug_prev_node_key_distribution(h_prev_nodes);
 
-    // CPU側で、grid codeとbitsの組み合わせをキーとして、prev_bvh_nodesのインデックスを値とするMAPを作る
+    // CPU側で、grid codeとbitsの絁E�E�E�E��E�E�E�合わせをキーとして、prev_bvh_nodesのインチE�E�E�E��E�E�E�クスを値とするMAPを作る
     auto prev_node_map = build_prev_node_map(h_prev_nodes);
 
     // dirty leafの親を前フレームのBVHからとってくる
-    vector<int> h_root_indices = build_unique_prev_parent_roots(dirty_leaves_cpu, prev_node_map);
-
-    printf("root_indices=%zu dirty_leaves=%zu dirty_keys=%zu\n",
-           h_root_indices.size(),
-           dirty_leaves_cpu.size(),
-           h_dirty_keys.size());
+    std::vector<int> h_root_indices = build_unique_prev_roots_from_dirty_keys(h_dirty_keys, prev_node_map);
+    printf("Num of dirty keys: %zu\n", h_dirty_keys.size());
+    printf("Num of dirty leaves: %zu\n", dirty_leaves_cpu.size());
+    printf("Unique root indices from dirty keys: %zu\n", h_root_indices.size());
+    debug_root_bits_distribution(h_root_indices, h_prev_nodes);
 
     if (h_root_indices.empty())
         return;
 
-    // GPUにroot_indicesとdirty_keysをアップロード
+    // GPUにroot_indicesとdirty_keysをアチE�E�E�E�EローチE
     int *d_root_indices = nullptr;
-    ulonglong2 *d_dirty_keys = nullptr;
+    GPU_DirtyKey *d_dirty_keys = nullptr;
 
     upload_root_indices_and_dirty_keys(h_root_indices, h_dirty_keys, d_root_indices, d_dirty_keys);
 
-    // frontierを展開してaffected clusterを集めるためのバッファ確保
-    int max_out = num_prev_nodes + num_prev_leaves; // 最悪の場合、全てのノードとリーフがaffected clusterになる。GBVH的には最高？
+    // frontierを展開してaffected clusterを集めるためのバッファ確俁E
+    int max_out = num_prev_nodes + num_prev_leaves; // 最悪の場合、E�E��E�Eてのノ�Eドとリーフがaffected clusterになる、EBVH皁E�E�E�E��E�E�E�は最高！E
     CHECK_CUDA(cudaMalloc(&d_affected_clusters, sizeof(GPU_Cluster) * max_out));
 
     int *d_num_out_clusters = nullptr;
@@ -1074,11 +1366,11 @@ void collect_affected_clusters_from_prev(
     CHECK_CUDA(cudaMemset(d_visited_prev_leaves, 0, sizeof(int) * num_prev_leaves));
     CHECK_CUDA(cudaMemset(d_visited_prev_nodes, 0, sizeof(int) * num_prev_nodes));
 
-    // frontierの初期化
+    // frontierの初期匁E
     int frontier_size = (int)h_root_indices.size();
-    CHECK_CUDA(cudaMemcpy(d_frontier_cur, d_root_indices, sizeof(int) * frontier_size, cudaMemcpyDeviceToDevice)); // まずはdirty_leavesの親から探索を始める
+    CHECK_CUDA(cudaMemcpy(d_frontier_cur, d_root_indices, sizeof(int) * frontier_size, cudaMemcpyDeviceToDevice)); // まず�Edirty_leavesの親から探索を始めめE
 
-    // rootはvisitedにマークする（どうせdirtyなのでやらなくてもいいかもしれない）
+    // rootはvisitedにマ�Eクする�E�E�E�E�E�E�E�どぁE�E�E�E��E�E�E�dirtyなのでめE�E�E�E��E�E�E�なくてもいぁE�E�E�E��E�E�E�もしれなぁE�E�E�E��E�E�E�E
     {
         vector<int> h_root_marks(num_prev_nodes, 0);
         for (int idx : h_root_indices)
@@ -1092,6 +1384,9 @@ void collect_affected_clusters_from_prev(
         CHECK_CUDA(cudaMemcpy(d_visited_prev_nodes, h_root_marks.data(), sizeof(int) * num_prev_nodes, cudaMemcpyHostToDevice));
     }
 
+    int *d_debug_counts = nullptr;
+    CHECK_CUDA(cudaMalloc(&d_debug_counts, sizeof(int) * DBG_COUNT));
+    CHECK_CUDA(cudaMemset(d_debug_counts, 0, sizeof(int) * DBG_COUNT));
     // frontierを展開してaffected clusterを集める
     while (frontier_size > 0)
     {
@@ -1117,7 +1412,8 @@ void collect_affected_clusters_from_prev(
             d_frontier_next_size,
 
             d_affected_clusters,
-            d_num_out_clusters);
+            d_num_out_clusters,
+            d_debug_counts);
         CHECK_CUDA(cudaGetLastError());
 
         CHECK_CUDA(cudaMemcpy(&frontier_size, d_frontier_next_size, sizeof(int), cudaMemcpyDeviceToHost));
@@ -1125,26 +1421,45 @@ void collect_affected_clusters_from_prev(
         std::swap(d_frontier_cur, d_frontier_next);
     }
 
+    int h_debug[DBG_COUNT] = {};
+    CHECK_CUDA(cudaMemcpy(h_debug,
+                          d_debug_counts,
+                          sizeof(int) * DBG_COUNT,
+                          cudaMemcpyDeviceToHost));
+
+    // printf("=== affected debug ===\n");
+    // printf("seen leaf       = %d\n", h_debug[DBG_SEEN_LEAF]);
+    // printf("seen node       = %d\n", h_debug[DBG_SEEN_NODE]);
+    // printf("skip dirty leaf = %d\n", h_debug[DBG_SKIP_DIRTY_LEAF]);
+    // printf("skip dirty node = %d\n", h_debug[DBG_SKIP_DIRTY_NODE]);
+    // printf("add leaf        = %d\n", h_debug[DBG_ADD_LEAF]);
+    // printf("add node        = %d\n", h_debug[DBG_ADD_NODE]);
+    // printf("dup leaf        = %d\n", h_debug[DBG_DUP_LEAF]);
+    // printf("dup node        = %d\n", h_debug[DBG_DUP_NODE]);
+    // printf("======================\n");
+
+    CHECK_CUDA(cudaFree(d_debug_counts));
+
     CHECK_CUDA(cudaMemcpy(&num_affected_clusters, d_num_out_clusters, sizeof(int), cudaMemcpyDeviceToHost));
 
-    printf("collect_affected: roots=%zu dirty_leaves=%zu dirty_keys=%zu\n",
-           h_root_indices.size(),
-           dirty_leaves_cpu.size(),
-           h_dirty_keys.size());
+    // printf("collect_affected: roots=%zu dirty_leaves=%zu dirty_keys=%zu\n",
+    //        h_root_indices.size(),
+    //        dirty_leaves_cpu.size(),
+    //        h_dirty_keys.size());
 
     for (int i = 0; i < std::min<int>(10, h_root_indices.size()); ++i)
     {
         int idx = h_root_indices[i];
         const auto &n = h_prev_nodes[idx];
-        printf("root[%d] node_idx=%d bits=%u code=%llu left_type=%d left_idx=%d right_type=%d right_idx=%d\n",
-               i,
-               idx,
-               (unsigned)n.grid_bits,
-               (unsigned long long)n.grid_code,
-               n.left_type,
-               n.left_idx,
-               n.right_type,
-               n.right_idx);
+        // printf("root[%d] node_idx=%d bits=%u code=%llu left_type=%d left_idx=%d right_type=%d right_idx=%d\n",
+        //        i,
+        //        idx,
+        //        (unsigned)n.grid_bits,
+        //        (unsigned long long)n.grid_code,
+        //        n.left_type,
+        //        n.left_idx,
+        //        n.right_type,
+        //        n.right_idx);
     }
 
     for (int i = 0; i < std::min<int>(10, dirty_leaves_cpu.size()); ++i)
@@ -1153,12 +1468,12 @@ void collect_affected_clusters_from_prev(
         if (!leaf)
             continue;
 
-        printf("dirty leaf[%d] bits=%u code=%llu parent_bits=%u parent_code=%llu\n",
-               i,
-               (unsigned)leaf->grid_bits,
-               (unsigned long long)leaf->grid_code,
-               (unsigned)(leaf->grid_bits >= GRID_BITS_PER_LEVEL ? leaf->grid_bits - GRID_BITS_PER_LEVEL : 0),
-               (unsigned long long)(leaf->grid_code >> GRID_BITS_PER_LEVEL));
+        // printf("dirty leaf[%d] bits=%u code=%llu parent_bits=%u parent_code=%llu\n",
+        //        i,
+        //        (unsigned)leaf->grid_bits,
+        //        (unsigned long long)leaf->grid_code,
+        //        (unsigned)(leaf->grid_bits >= GRID_BITS_PER_LEVEL ? leaf->grid_bits - GRID_BITS_PER_LEVEL : 0),
+        //        (unsigned long long)(leaf->grid_code >> GRID_BITS_PER_LEVEL));
     }
 
     cudaFree(d_frontier_cur);
@@ -1301,18 +1616,27 @@ void build_frame_leaves(
     cudaStream_t stream = 0)
 {
     // ------------------------------------------------------------
-    // 0. 前提チェック
+    // 0. 前提チェチE�E�E�E��E�E�E�
     // ------------------------------------------------------------
     if (h_scene.frame_leaves)
     {
-        CHECK_CUDA(cudaFree(h_scene.frame_leaves));
+        cudaPointerAttributes attr;
+        cudaError_t attr_err = cudaPointerGetAttributes(&attr, h_scene.frame_leaves);
+        if (attr_err == cudaSuccess)
+        {
+            CHECK_CUDA(cudaFree(h_scene.frame_leaves));
+        }
+        else
+        {
+            cudaGetLastError(); // clear error state from attribute query
+        }
         h_scene.frame_leaves = nullptr;
     }
     h_scene.num_frame_leaves = 0;
 
     int num_dirty_leaves = h_scene.num_dirty_leaves;
 
-    // affected が無いなら frame_leaves = dirty_leaves のコピーでよい
+    // affected が無ぁE�E�E�E��E�E�E�めEframe_leaves = dirty_leaves のコピ�Eでよい
     if (num_affected_clusters <= 0)
     {
         if (num_dirty_leaves > 0)
@@ -1337,10 +1661,10 @@ void build_frame_leaves(
         return;
     }
 
-    // prev_complete_leaves が必要
+    // prev_complete_leaves が忁E�E�E�E��E�E�E�E
     if (h_scene.prev_complete_leaves == nullptr || h_scene.num_prev_complete_leaves <= 0)
     {
-        // affected cluster があるのに prev leaves が無いのは不整合
+        // affected cluster がある�Eに prev leaves が無ぁE�E�E�E�Eは不整吁E
         fprintf(stderr, "ERROR: affected clusters exist but prev_complete_leaves is null.\n");
         return;
     }
@@ -1420,7 +1744,7 @@ void build_frame_leaves(
     h_scene.num_frame_leaves = num_frame_leaves;
 
     // ------------------------------------------------------------
-    // 4. affected leaf cluster の leaf_idx を frame_leaves 用に振り直す
+    // 4. affected leaf cluster の leaf_idx めEframe_leaves 用に振り直ぁE
     //    dirty leaves は先頭に並ぶので base = num_dirty_leaves
     // ------------------------------------------------------------
     if (num_affected_leaves > 0)
@@ -1438,7 +1762,7 @@ void build_frame_leaves(
     }
 
     // ------------------------------------------------------------
-    // 5. 一時バッファ解放
+    // 5. 一時バチE�E�E�E��E�E�E�ァ解放
     // ------------------------------------------------------------
     if (d_affected_leaves)
     {
@@ -1447,7 +1771,7 @@ void build_frame_leaves(
     }
 
     // ------------------------------------------------------------
-    // 6. DeviceScene を GPU に書き戻す
+    // 6. DeviceScene めEGPU に書き戻ぁE
     // ------------------------------------------------------------
     CHECK_CUDA(cudaMemcpyAsync(d_scene,
                                &h_scene,
@@ -1464,17 +1788,20 @@ void build_frame_leaves(
 __device__ inline void set_child_from_cluster(
     const GPU_Cluster &c,
     int &out_idx,
-    int &out_type)
+    int &out_type,
+    int &out_source)
 {
     if (cluster_is_leaf(c))
     {
         out_idx = c.leaf_idx;
         out_type = GPU_CHILD_LEAF;
+        out_source = GPU_NODE_SRC_NONE;
     }
     else
     {
         out_idx = c.node_idx;
         out_type = GPU_CHILD_NODE;
+        out_source = c.node_source;
     }
 }
 
@@ -1695,8 +2022,8 @@ __global__ void kernel_build_next_clusters_no_lift(
         GPU_Cluster m{};
         m.aabb = AABB::merge(a.aabb, b.aabb);
 
-        m.grid_code = a.grid_code; // どっちでもいいはず
-        m.grid_bits = a.grid_bits; // どっちでもいいはず
+        m.grid_code = a.grid_code; // どっちでもいぁE�E�E�E�EぁE
+        m.grid_bits = a.grid_bits; // どっちでもいぁE�E�E�E�EぁE
 
         m.leaf_idx = -1;
         m.node_idx = -1; // placeholder
@@ -1742,30 +2069,33 @@ __global__ void kernel_build_next_clusters_with_nodes(
 
         GPU_BVH_Node node{};
         node.aabb = AABB::merge(a.aabb, b.aabb);
+        node.grid_code = a.grid_code;
+        node.grid_bits = a.grid_bits;
 
-        set_child_from_cluster(a, node.left_idx, node.left_type);
-        set_child_from_cluster(b, node.right_idx, node.right_type);
+        set_child_from_cluster(a, node.left_idx, node.left_type, node.left_source);
+        set_child_from_cluster(b, node.right_idx, node.right_type, node.right_source);
 
         d_bvh_nodes[new_node_idx] = node;
 
         GPU_Cluster merged{};
         merged.aabb = node.aabb;
-        merged.grid_code = a.grid_code; // どっちでもいいはず
-        merged.grid_bits = a.grid_bits; // どっちでもいいはず
+        merged.grid_code = a.grid_code; // どっちでもいぁE�E�E�E�EぁE
+        merged.grid_bits = a.grid_bits; // どっちでもいぁE�E�E�E�EぁE
         merged.leaf_idx = -1;
         merged.node_idx = new_node_idx;
+        merged.node_source = GPU_NODE_SRC_CURR;
 
         d_next[out_idx] = merged;
 
-        if (new_node_idx < 20)
-        {
-            printf("create node idx=%d bits a=%u b=%u code a=%llu b=%llu\n",
-                   new_node_idx,
-                   (unsigned)a.grid_bits,
-                   (unsigned)b.grid_bits,
-                   (unsigned long long)a.grid_code,
-                   (unsigned long long)b.grid_code);
-        }
+        // if (new_node_idx < 20)
+        // {
+        //     printf("create node idx=%d bits a=%u b=%u code a=%llu b=%llu\n",
+        //            new_node_idx,
+        //            (unsigned)a.grid_bits,
+        //            (unsigned)b.grid_bits,
+        //            (unsigned long long)a.grid_code,
+        //            (unsigned long long)b.grid_code);
+        // }
         return;
     }
 
@@ -1792,8 +2122,8 @@ struct IsTargetBitsMax
     __host__ __device__ int operator()(const thrust::tuple<ulonglong2, int> &t) const
     {
         ulonglong2 key = thrust::get<0>(t);
-        int idx = thrust::get<1>(t);
-        return (int)key.y == target_bits;
+        int count = thrust::get<1>(t);
+        return ((int)key.y == target_bits) ? count : 0;
     }
 };
 
@@ -1879,7 +2209,7 @@ inline RoundResult agc_round_one_level_no_lift(
     counts.resize(G);
     rr.num_groups = G;
 
-    // target_bits の max group size を求める
+    // target_bits の max group size を求めめE
     int max_count_target = 0;
     if (G > 0)
     {
@@ -1893,7 +2223,7 @@ inline RoundResult agc_round_one_level_no_lift(
             thrust::maximum<int>());
     }
 
-    printf("Group count: %d, max group size for target bits (%d): %d\n", G, target_bits, max_count_target);
+    // printf("Group count: %d, max group size for target bits (%d): %d\n", G, target_bits, max_count_target);
     rr.max_group_size = max_count_target;
 
     // group_offsets
@@ -1937,6 +2267,7 @@ inline RoundResult agc_round_one_level_no_lift(
             thrust::raw_pointer_cast(group_offsets.data()),
             thrust::raw_pointer_cast(neighbor.data()));
     }
+    CHECK_KERNEL_SYNC();
 
     // int nn_count = thrust::count_if(thrust::cuda::par.on(stream),
     //                               neighbor.begin(), neighbor.end(),
@@ -1955,11 +2286,13 @@ inline RoundResult agc_round_one_level_no_lift(
             thrust::raw_pointer_cast(neighbor.data()),
             thrust::raw_pointer_cast(pair_flag.data()),
             thrust::raw_pointer_cast(partner.data()));
+        CHECK_KERNEL_SYNC();
         kernel_mark_used<<<grid, block, 0, stream>>>(
             n,
             thrust::raw_pointer_cast(pair_flag.data()),
             thrust::raw_pointer_cast(partner.data()),
             thrust::raw_pointer_cast(used.data()));
+        CHECK_KERNEL_SYNC();
     }
 
     thrust::device_vector<int> pair_offsets(n);
@@ -1972,7 +2305,7 @@ inline RoundResult agc_round_one_level_no_lift(
                                    0, thrust::plus<int>());
     rr.num_pairs = num_pairs;
 
-    // unmerged = (used==0) → target外も全部 unmerged になって素通し
+    // unmerged = (used==0) ↁEtarget外も全部 unmerged になって素通し
     thrust::device_vector<int> unmerged_flag(n), unmerged_offsets(n);
     thrust::transform(thrust::cuda::par.on(stream),
                       used.begin(), used.end(),
@@ -2007,7 +2340,7 @@ inline RoundResult agc_round_one_level_no_lift(
             d_bvh_nodes,
             d_num_bvh_nodes);
     }
-
+    CHECK_KERNEL_SYNC();
     rr.d_next = d_next;
     rr.n_next = n_next;
     return rr;
@@ -2054,7 +2387,7 @@ __global__ void kernel_set_bvh_root_from_final_cluster(
 
     const GPU_Cluster &c = d_clusters[0];
 
-    // 今回は最終的に internal node になる前提
+    // 今回は最終的に internal node になる前揁E
     d_scene->curr_bvh_root_node_idx = c.node_idx;
 }
 
@@ -2139,7 +2472,7 @@ inline StageAResult reduce_levelwise_merge_then_lift(
     while (n > 1 && rounds < max_rounds_guard)
     {
 
-        // ターゲットになるレベル（深さ）
+        // ターゲチE�E�E�E��E�E�E�になるレベル�E�E�E�E�E�E�E�深さ！E
         int target_bits = device_max_bits(cur, n, stream);
         if (target_bits == 0 && n <= 1)
         {
@@ -2151,7 +2484,7 @@ inline StageAResult reduce_levelwise_merge_then_lift(
         while (rounds < max_rounds_guard)
         {
             int n_before = n;
-            // target bitsの深さのクラスターだけをマージする
+            // target bitsの深さ�Eクラスターだけをマ�Eジする
             RoundResult rr = agc_round_one_level_no_lift(
                 cur, n, target_bits,
                 d_bvh_nodes, d_num_bvh_nodes,
@@ -2182,7 +2515,7 @@ inline StageAResult reduce_levelwise_merge_then_lift(
             }
         }
 
-        // ここが必要：この level を parent に持ち上げる
+        // ここが忁E�E�E�E��E�E�E�E�E�E�E��E�E�E�こ�E level めEparent に持ち上げめE
         {
             int block = 256;
             int grid = (n + block - 1) / block;
@@ -2201,11 +2534,11 @@ void build_bvh_on_gpu(
     DeviceScene *d_scene,
     DeviceScene &h_scene,
     const std::vector<LeafNode *> &dirty_leaves_cpu,
-    const std::vector<ulonglong2> &h_dirty_keys,
+    const std::vector<DirtyKey> &h_dirty_keys,
     cudaStream_t stream)
 {
     // ------------------------------------------------------------
-    // 1. dirty clusters を入力の基本とする
+    // 1. dirty clusters を�E力�E基本とする
     // ------------------------------------------------------------
     GPU_Cluster *d_input_clusters = h_scene.clusters;
     GPU_Cluster *old_clusters = h_scene.clusters;
@@ -2217,7 +2550,7 @@ void build_bvh_on_gpu(
     GPU_Cluster *d_merged_clusters = nullptr;
 
     // ------------------------------------------------------------
-    // 2. prev completed BVH があるなら affected clusters を集める
+    // 2. prev completed BVH があるなめEaffected clusters を集める
     // ------------------------------------------------------------
     int num_prev_nodes = 0;
     if (h_scene.num_prev_bvh_nodes)
@@ -2234,12 +2567,12 @@ void build_bvh_on_gpu(
         (num_prev_nodes > 0) &&
         (h_scene.num_prev_complete_leaves > 0);
 
-    printf("has_prev_bvh=%d prev_nodes=%p prev_leaves=%p num_prev_nodes=%d num_prev_leaves=%d\n",
-           (int)has_prev_bvh,
-           (void *)h_scene.prev_bvh_nodes,
-           (void *)h_scene.prev_complete_leaves,
-           num_prev_nodes,
-           h_scene.num_prev_complete_leaves);
+    // printf("has_prev_bvh=%d prev_nodes=%p prev_leaves=%p num_prev_nodes=%d num_prev_leaves=%d\n",
+    //        (int)has_prev_bvh,
+    //        (void *)h_scene.prev_bvh_nodes,
+    //        (void *)h_scene.prev_complete_leaves,
+    //        num_prev_nodes,
+    //        h_scene.num_prev_complete_leaves);
 
     auto start_time = std::chrono::high_resolution_clock::now();
     if (has_prev_bvh)
@@ -2252,6 +2585,7 @@ void build_bvh_on_gpu(
             num_affected_clusters,
             stream);
     }
+    CHECK_KERNEL_SYNC();
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
     printf("Time for collecting affected clusters: %.3f ms\n", elapsed.count());
@@ -2262,9 +2596,10 @@ void build_bvh_on_gpu(
         d_affected_clusters,
         num_affected_clusters,
         stream);
+    CHECK_KERNEL_SYNC();
 
     // ------------------------------------------------------------
-    // 3. dirty + affected を連結
+    // 3. dirty + affected を連絁E
     // ------------------------------------------------------------
     if (num_affected_clusters > 0)
     {
@@ -2287,12 +2622,13 @@ void build_bvh_on_gpu(
         d_input_clusters = d_merged_clusters;
         num_input_clusters = total_clusters;
     }
+    CHECK_KERNEL_SYNC();
 
     printf("Total input clusters for AGC: %d (dirty: %d, affected: %d)\n",
            num_input_clusters, h_scene.num_dirty_leaves, num_affected_clusters);
 
     // ------------------------------------------------------------
-    // 4. curr_bvh_nodes を total cluster 数に合わせて再確保
+    // 4. curr_bvh_nodes めEtotal cluster 数に合わせて再確俁E
     //    internal node 最大数は (num_input_clusters - 1)
     // ------------------------------------------------------------
     if (h_scene.curr_bvh_nodes)
@@ -2328,7 +2664,7 @@ void build_bvh_on_gpu(
                                stream));
 
     // ------------------------------------------------------------
-    // 5. cluster が 0 / 1 / 2+ の場合分け
+    // 5. cluster ぁE0 / 1 / 2+ の場合�EぁE
     // ------------------------------------------------------------
     if (num_input_clusters <= 0)
     {
@@ -2341,9 +2677,9 @@ void build_bvh_on_gpu(
     }
     else if (num_input_clusters == 1)
     {
-        // root が leaf cluster のみになるケース
-        // 今の DeviceScene は node root しか持っていないので暫定的に -1
-        // 必要なら将来 root_type / root_leaf_idx を追加する
+        // root ぁEleaf cluster のみになるケース
+        // 今�E DeviceScene は node root しか持ってぁE�E�E�E��E�E�E�ぁE�E�E�E�Eで暫定的に -1
+        // 忁E�E�E�E��E�E�E�なら封E�E�E�E��E�E�E� root_type / root_leaf_idx を追加する
         h_scene.curr_bvh_root_node_idx = -1;
         CHECK_CUDA(cudaMemcpyAsync(d_scene,
                                    &h_scene,
@@ -2355,7 +2691,7 @@ void build_bvh_on_gpu(
     {
         auto start_time = std::chrono::high_resolution_clock::now();
         // --------------------------------------------------------
-        // 6. AGC 実行
+        // 6. AGC 実衁E
         // --------------------------------------------------------
         StageAResult res = reduce_levelwise_merge_then_lift(
             d_input_clusters,
@@ -2366,33 +2702,38 @@ void build_bvh_on_gpu(
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
         printf("Time for AGC reduction: %.3f ms (rounds taken: %d)\n", elapsed.count(), res.rounds_taken);
-
-        // root を DeviceScene に書く
-        kernel_set_bvh_root_from_final_cluster<<<1, 1, 0, stream>>>(
-            d_scene,
-            res.d_out,
-            res.n_out);
-        CHECK_CUDA(cudaGetLastError());
-
-        // host mirror 側にも root を反映
-        GPU_Cluster h_final_cluster{};
-        CHECK_CUDA(cudaMemcpy(&h_final_cluster,
-                              res.d_out,
-                              sizeof(GPU_Cluster),
-                              cudaMemcpyDeviceToHost));
-
-        if (res.n_out == 1 && h_final_cluster.node_idx >= 0)
+        // root setup for DeviceScene
+        if (res.d_out != nullptr && res.n_out > 0)
         {
-            h_scene.curr_bvh_root_node_idx = h_final_cluster.node_idx;
+            kernel_set_bvh_root_from_final_cluster<<<1, 1, 0, stream>>>(
+                d_scene,
+                res.d_out,
+                res.n_out);
+            CHECK_CUDA(cudaGetLastError());
+
+            CHECK_CUDA(cudaStreamSynchronize(stream));
+            CHECK_CUDA(cudaMemcpy(&h_scene,
+                                  d_scene,
+                                  sizeof(DeviceScene),
+                                  cudaMemcpyDeviceToHost));
+
+            if (h_scene.curr_bvh_root_node_idx < 0)
+            {
+                printf("Warning: BVH root is invalid after AGC (n_out=%d, d_out=%p)\\n",
+                       res.n_out, (void *)res.d_out);
+            }
         }
         else
         {
+            printf("Warning: AGC returned empty clusters (n_out=%d, d_out=%p)\\n",
+                   res.n_out, (void *)res.d_out);
             h_scene.curr_bvh_root_node_idx = -1;
         }
+        CHECK_KERNEL_SYNC();
 
-        // clusters / num_clusters も最新に更新
-        h_scene.clusters = res.d_out;
-        h_scene.num_clusters = res.n_out;
+        // clusters / num_clusters update
+        h_scene.clusters = nullptr;
+        h_scene.num_clusters = 0;
 
         CHECK_CUDA(cudaMemcpyAsync(d_scene,
                                    &h_scene,
@@ -2400,59 +2741,465 @@ void build_bvh_on_gpu(
                                    cudaMemcpyHostToDevice,
                                    stream));
 
-        // old dirty clusters を解放
+        // old dirty clusters free (if distinct)
         if (old_clusters && old_clusters != res.d_out && old_clusters != d_merged_clusters)
         {
             CHECK_CUDA(cudaFree(old_clusters));
         }
 
-        // merged 一時配列を解放
+        // merged clusters are temporary unless selected as res.d_out
         if (d_merged_clusters && d_merged_clusters != res.d_out)
         {
             CHECK_CUDA(cudaFree(d_merged_clusters));
         }
     }
-
-    // ------------------------------------------------------------
-    // 7. 一時バッファ解放
-    // ------------------------------------------------------------
-    if (d_affected_clusters)
-    {
-        CHECK_CUDA(cudaFree(d_affected_clusters));
-        d_affected_clusters = nullptr;
-    }
-
-    if (d_merged_clusters)
-    {
-        // res.d_out が d_merged_clusters を指している可能性があるなら
-        // ここで即 free は危険。
-        // 今の reduce_levelwise_merge_then_lift は途中で新しい配列を作るので、
-        // 最終的に res.d_out が別配列になる想定なら free 可。
-        // 安全側に倒してここでは解放しない方がよい。
-        //
-        CHECK_CUDA(cudaFree(d_merged_clusters));
-    }
+    CHECK_KERNEL_SYNC();
 
     CHECK_CUDA(cudaGetLastError());
 }
 
-void promote_curr_to_prev(DeviceScene &h_scene)
+struct NodeRef
 {
-    // old prev を解放
+    int source; // GPU_NODE_SRC_CURR or GPU_NODE_SRC_PREV
+    int idx;    // node index in the respective array
+
+    bool operator==(const NodeRef &other) const
+    {
+        return source == other.source && idx == other.idx;
+    }
+};
+
+struct NodeRefHash
+{
+    size_t operator()(const NodeRef &nr) const
+    {
+        return std::hash<int>()(nr.source) ^ (std::hash<int>()(nr.idx) << 1);
+    }
+};
+
+struct MaterializeStats
+{
+    long long copied_prev_leaf_count = 0;
+    long long copied_prev_tri_count = 0;
+
+    long long reused_curr_leaf_count = 0;
+    long long reused_curr_tri_count = 0;
+
+    long long materialized_node_count = 0;
+};
+
+static void debug_duplicate_leaf_codes(
+    const std::vector<GPU_LeafNode>& leaves
+){
+    std::unordered_map<uint64_t, int> counts;
+
+    for (const auto& leaf : leaves) {
+        counts[leaf.leaf_code]++;
+    }
+
+    int dup_codes = 0;
+    int dup_leaves = 0;
+
+    for (auto& kv : counts) {
+        if (kv.second > 1) {
+            dup_codes++;
+            dup_leaves += kv.second;
+
+            if (dup_codes <= 20) {
+                printf("DUP leaf_code=%llu count=%d\n",
+                       (unsigned long long)kv.first,
+                       kv.second);
+            }
+        }
+    }
+
+    printf("duplicate leaf codes: codes=%d leaves=%d total_leaves=%zu unique=%zu\n",
+           dup_codes,
+           dup_leaves,
+           leaves.size(),
+           counts.size());
+}
+
+// prevとcurrからfinal BVHを構築
+static int materialize_node_recursive(
+    NodeRef ref,
+    const std::vector<GPU_BVH_Node> &h_prev_nodes,
+    const std::vector<GPU_BVH_Node> &h_curr_nodes,
+    const std::vector<GPU_LeafNode> &h_prev_leaves,
+    const std::vector<GPU_LeafNode> &h_curr_leaves, // 追加: frame_leaves
+    std::vector<GPU_LeafNode> &h_final_leaves,
+    std::vector<GPU_BVH_Node> &h_final_nodes,
+    std::unordered_map<NodeRef, int, NodeRefHash> &node_remap,
+    MaterializeStats &stats)
+{
+    if (ref.source == GPU_NODE_SRC_PREV)
+    {
+        if (ref.idx < 0 || ref.idx >= (int)h_prev_nodes.size())
+        {
+            printf("ERROR: prev node idx out of range: idx=%d size=%zu\n",
+                   ref.idx, h_prev_nodes.size());
+            return -1;
+        }
+    }
+    else if (ref.source == GPU_NODE_SRC_CURR)
+    {
+        if (ref.idx < 0 || ref.idx >= (int)h_curr_nodes.size())
+        {
+            printf("ERROR: curr node idx out of range: idx=%d size=%zu\n",
+                   ref.idx, h_curr_nodes.size());
+            return -1;
+        }
+    }
+    else
+    {
+        printf("ERROR: invalid node source=%d idx=%d\n", ref.source, ref.idx);
+        return -1;
+    }
+
+    auto it = node_remap.find(ref);
+    if (it != node_remap.end())
+    {
+        return it->second;
+    }
+
+    const GPU_BVH_Node *src = nullptr;
+
+    if (ref.source == GPU_NODE_SRC_PREV)
+    {
+        src = &h_prev_nodes[ref.idx];
+    }
+    else if (ref.source == GPU_NODE_SRC_CURR)
+    {
+        src = &h_curr_nodes[ref.idx];
+    }
+    else
+    {
+        return -1;
+    }
+
+    GPU_BVH_Node out{};
+    out.aabb = src->aabb;
+    out.grid_code = src->grid_code;
+    out.grid_bits = src->grid_bits;
+
+    auto materialize_child = [&](int child_idx, int child_type, int child_source,
+                                 int &out_idx, int &out_type, int &out_source)
+    {
+        if (child_idx < 0)
+        {
+            out_idx = -1;
+            out_type = child_type;
+            out_source = GPU_NODE_SRC_NONE;
+            return;
+        }
+
+        if (child_type == GPU_CHILD_LEAF)
+        {
+            if (ref.source == GPU_NODE_SRC_PREV)
+            {
+                if (child_idx < 0 || child_idx >= (int)h_prev_leaves.size())
+                {
+                    printf("ERROR: prev leaf idx out of range: idx=%d size=%zu\n",
+                           child_idx, h_prev_leaves.size());
+                    out_idx = -1;
+                    out_type = GPU_CHILD_LEAF;
+                    out_source = GPU_NODE_SRC_NONE;
+                    return;
+                }
+
+                const GPU_LeafNode &prev_leaf = h_prev_leaves[child_idx];
+
+                int new_leaf_idx = (int)h_final_leaves.size();
+                h_final_leaves.push_back(prev_leaf);
+
+                stats.copied_prev_leaf_count++;
+                stats.copied_prev_tri_count += prev_leaf.tri_count;
+
+                out_idx = new_leaf_idx;
+                out_type = GPU_CHILD_LEAF;
+                out_source = GPU_NODE_SRC_NONE;
+            }
+            else
+            {
+                if (child_idx < 0 || child_idx >= (int)h_curr_leaves.size())
+                {
+                    printf("ERROR: curr leaf idx out of range: idx=%d size=%zu\n",
+                           child_idx, h_curr_leaves.size());
+                    out_idx = -1;
+                    out_type = GPU_CHILD_LEAF;
+                    out_source = GPU_NODE_SRC_NONE;
+                    return;
+                }
+
+                const GPU_LeafNode &curr_leaf = h_curr_leaves[child_idx];
+
+                stats.reused_curr_leaf_count++;
+                stats.reused_curr_tri_count += curr_leaf.tri_count;
+
+                out_idx = child_idx;
+                out_type = GPU_CHILD_LEAF;
+                out_source = GPU_NODE_SRC_NONE;
+            }
+            return;
+        }
+
+        // 重要:
+        // prev BVH の中に保存されている CURR source は、
+        // promote 後は prev 配列内参照として扱う
+        int effective_child_source = child_source;
+        if (ref.source == GPU_NODE_SRC_PREV)
+        {
+            effective_child_source = GPU_NODE_SRC_PREV;
+        }
+
+        NodeRef child_ref{effective_child_source, child_idx};
+
+        int new_child_idx = materialize_node_recursive(
+            child_ref,
+            h_prev_nodes,
+            h_curr_nodes,
+            h_prev_leaves,
+            h_curr_leaves,
+            h_final_leaves,
+            h_final_nodes,
+            node_remap,
+            stats);
+
+        out_idx = new_child_idx;
+        out_type = GPU_CHILD_NODE;
+        out_source = GPU_NODE_SRC_CURR;
+    };
+
+    materialize_child(
+        src->left_idx,
+        src->left_type,
+        src->left_source,
+        out.left_idx,
+        out.left_type,
+        out.left_source);
+
+    materialize_child(
+        src->right_idx,
+        src->right_type,
+        src->right_source,
+        out.right_idx,
+        out.right_type,
+        out.right_source);
+
+    int new_idx = (int)h_final_nodes.size();
+    h_final_nodes.push_back(out);
+    stats.materialized_node_count++;
+
+    node_remap[ref] = new_idx;
+    return new_idx;
+}
+
+void materialize_curr_bvh_to_self_contained(
+    DeviceScene *d_scene,
+    DeviceScene &h_scene)
+{
+    // -------------------------------
+    // 1. curr nodes download
+    // -------------------------------
+    int num_curr_nodes = 0;
+    printf("num_curr_bvh_nodes ptr = %p\n",
+           (void *)h_scene.num_curr_bvh_nodes);
+    CHECK_CUDA(cudaMemcpy(&num_curr_nodes,
+                          h_scene.num_curr_bvh_nodes,
+                          sizeof(int),
+                          cudaMemcpyDeviceToHost));
+
+    std::vector<GPU_BVH_Node> h_curr_nodes(num_curr_nodes);
+    if (num_curr_nodes > 0)
+    {
+        CHECK_CUDA(cudaMemcpy(h_curr_nodes.data(),
+                              h_scene.curr_bvh_nodes,
+                              sizeof(GPU_BVH_Node) * num_curr_nodes,
+                              cudaMemcpyDeviceToHost));
+    }
+
+    // -------------------------------
+    // 2. prev nodes download
+    // -------------------------------
+    int num_prev_nodes = 0;
+    CHECK_CUDA(cudaMemcpy(&num_prev_nodes,
+                          h_scene.num_prev_bvh_nodes,
+                          sizeof(int),
+                          cudaMemcpyDeviceToHost));
+
+    std::vector<GPU_BVH_Node> h_prev_nodes(num_prev_nodes);
+    if (num_prev_nodes > 0)
+    {
+        CHECK_CUDA(cudaMemcpy(h_prev_nodes.data(),
+                              h_scene.prev_bvh_nodes,
+                              sizeof(GPU_BVH_Node) * num_prev_nodes,
+                              cudaMemcpyDeviceToHost));
+    }
+
+    // -------------------------------
+    // 3. prev leaves download
+    // -------------------------------
+    std::vector<GPU_LeafNode> h_prev_leaves(h_scene.num_prev_complete_leaves);
+    if (h_scene.num_prev_complete_leaves > 0)
+    {
+        CHECK_CUDA(cudaMemcpy(h_prev_leaves.data(),
+                              h_scene.prev_complete_leaves,
+                              sizeof(GPU_LeafNode) * h_scene.num_prev_complete_leaves,
+                              cudaMemcpyDeviceToHost));
+    }
+
+    // -------------------------------
+    // 4. current frame_leaves download
+    // -------------------------------
+    std::vector<GPU_LeafNode> h_final_leaves(h_scene.num_frame_leaves);
+    if (h_scene.num_frame_leaves > 0)
+    {
+        CHECK_CUDA(cudaMemcpy(h_final_leaves.data(),
+                              h_scene.frame_leaves,
+                              sizeof(GPU_LeafNode) * h_scene.num_frame_leaves,
+                              cudaMemcpyDeviceToHost));
+    }
+
+    // -------------------------------
+    // 5. mixed root から final tree 作成
+    // -------------------------------
+    std::vector<GPU_BVH_Node> h_final_nodes;
+    h_final_nodes.reserve(num_curr_nodes + num_prev_nodes);
+
+    std::unordered_map<NodeRef, int, NodeRefHash> node_remap;
+
+    NodeRef root_ref{
+        GPU_NODE_SRC_CURR,
+        h_scene.curr_bvh_root_node_idx};
+
+    auto sum_tris = [](const std::vector<GPU_LeafNode> &leaves)
+    {
+        long long sum = 0;
+        for (const auto &leaf : leaves)
+            sum += leaf.tri_count;
+        return sum;
+    };
+
+    long long initial_frame_tris = sum_tris(h_final_leaves);
+
+    MaterializeStats stats{};
+
+    int final_root_idx = materialize_node_recursive(
+        root_ref,
+        h_prev_nodes,
+        h_curr_nodes,
+        h_prev_leaves,
+        h_final_leaves, // h_curr_leaves として渡す
+        h_final_leaves,
+        h_final_nodes,
+        node_remap,
+        stats);
+
+    long long final_frame_tris = sum_tris(h_final_leaves);
+
+    // printf("=== materialize stats ===\n");
+    // printf("initial frame leaves = %zu tris = %lld\n",
+    //        h_scene.num_frame_leaves, initial_frame_tris);
+    // printf("copied prev leaves   = %lld tris = %lld\n",
+    //        stats.copied_prev_leaf_count, stats.copied_prev_tri_count);
+    // printf("reused curr leaves   = %lld tris = %lld\n",
+    //        stats.reused_curr_leaf_count, stats.reused_curr_tri_count);
+    // printf("materialized nodes   = %lld\n",
+    //        stats.materialized_node_count);
+    // printf("final frame leaves   = %zu tris = %lld\n",
+    //        h_final_leaves.size(), final_frame_tris);
+    // printf("expected final tris  = %lld\n",
+    //        initial_frame_tris + stats.copied_prev_tri_count);
+    // printf("=========================\n");
+
+    debug_duplicate_leaf_codes(h_final_leaves);
+
+    // -------------------------------
+    // 6. 古い curr を free
+    // -------------------------------
+    if (h_scene.curr_bvh_nodes)
+    {
+        CHECK_CUDA(cudaFree(h_scene.curr_bvh_nodes));
+        h_scene.curr_bvh_nodes = nullptr;
+    }
+
+    if (h_scene.num_curr_bvh_nodes)
+    {
+        CHECK_CUDA(cudaFree(h_scene.num_curr_bvh_nodes));
+        h_scene.num_curr_bvh_nodes = nullptr;
+    }
+
+    if (h_scene.frame_leaves)
+    {
+        CHECK_CUDA(cudaFree(h_scene.frame_leaves));
+        h_scene.frame_leaves = nullptr;
+    }
+
+    // -------------------------------
+    // 7. final nodes upload as curr
+    // -------------------------------
+    int final_num_nodes = (int)h_final_nodes.size();
+
+    CHECK_CUDA(cudaMalloc(&h_scene.curr_bvh_nodes,
+                          sizeof(GPU_BVH_Node) * final_num_nodes));
+    CHECK_CUDA(cudaMemcpy(h_scene.curr_bvh_nodes,
+                          h_final_nodes.data(),
+                          sizeof(GPU_BVH_Node) * final_num_nodes,
+                          cudaMemcpyHostToDevice));
+
+    CHECK_CUDA(cudaMalloc(&h_scene.num_curr_bvh_nodes, sizeof(int)));
+    CHECK_CUDA(cudaMemcpy(h_scene.num_curr_bvh_nodes,
+                          &final_num_nodes,
+                          sizeof(int),
+                          cudaMemcpyHostToDevice));
+
+    h_scene.curr_bvh_root_node_idx = final_root_idx;
+
+    // -------------------------------
+    // 8. final leaves upload as frame_leaves
+    // -------------------------------
+    int final_num_leaves = (int)h_final_leaves.size();
+
+    CHECK_CUDA(cudaMalloc(&h_scene.frame_leaves,
+                          sizeof(GPU_LeafNode) * final_num_leaves));
+    CHECK_CUDA(cudaMemcpy(h_scene.frame_leaves,
+                          h_final_leaves.data(),
+                          sizeof(GPU_LeafNode) * final_num_leaves,
+                          cudaMemcpyHostToDevice));
+
+    h_scene.num_frame_leaves = final_num_leaves;
+
+    // -------------------------------
+    // 9. DeviceScene 更新
+    // -------------------------------
+    CHECK_CUDA(cudaMemcpy(d_scene,
+                          &h_scene,
+                          sizeof(DeviceScene),
+                          cudaMemcpyHostToDevice));
+}
+
+void promote_curr_to_prev(DeviceScene *d_scene, DeviceScene &h_scene)
+{
+    // 古い prev を free
     if (h_scene.prev_bvh_nodes)
     {
         CHECK_CUDA(cudaFree(h_scene.prev_bvh_nodes));
+        h_scene.prev_bvh_nodes = nullptr;
     }
-    if (h_scene.prev_complete_leaves)
-    {
-        CHECK_CUDA(cudaFree(h_scene.prev_complete_leaves));
-    }
+
     if (h_scene.num_prev_bvh_nodes)
     {
         CHECK_CUDA(cudaFree(h_scene.num_prev_bvh_nodes));
+        h_scene.num_prev_bvh_nodes = nullptr;
     }
 
-    // curr → prev に移す
+    if (h_scene.prev_complete_leaves)
+    {
+        CHECK_CUDA(cudaFree(h_scene.prev_complete_leaves));
+        h_scene.prev_complete_leaves = nullptr;
+    }
+
+    // curr -> prev
     h_scene.prev_bvh_nodes = h_scene.curr_bvh_nodes;
     h_scene.num_prev_bvh_nodes = h_scene.num_curr_bvh_nodes;
     h_scene.prev_bvh_root_node_idx = h_scene.curr_bvh_root_node_idx;
@@ -2460,11 +3207,16 @@ void promote_curr_to_prev(DeviceScene &h_scene)
     h_scene.prev_complete_leaves = h_scene.frame_leaves;
     h_scene.num_prev_complete_leaves = h_scene.num_frame_leaves;
 
-    // curr をリセット（重要）
+    // curr 側は所有権を渡したので nullptr
     h_scene.curr_bvh_nodes = nullptr;
     h_scene.num_curr_bvh_nodes = nullptr;
     h_scene.curr_bvh_root_node_idx = -1;
 
     h_scene.frame_leaves = nullptr;
     h_scene.num_frame_leaves = 0;
+
+    CHECK_CUDA(cudaMemcpy(d_scene,
+                          &h_scene,
+                          sizeof(DeviceScene),
+                          cudaMemcpyHostToDevice));
 }

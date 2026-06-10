@@ -1,42 +1,4 @@
 #include "includes/renderer.cuh"
-#include <cerrno>
-#include <cstring>
-
-#ifdef _WIN32
-#include <direct.h>
-#else
-#include <sys/stat.h>
-#include <sys/types.h>
-#endif
-
-static bool ensure_dir_exists(const std::string& dir_path) {
-    if (dir_path.empty()) return true;
-
-    std::string current;
-    for (size_t i = 0; i < dir_path.size(); ++i) {
-        const char c = dir_path[i];
-        if (c == '/' || c == '\\') {
-            if (!current.empty()) {
-#ifdef _WIN32
-                if (_mkdir(current.c_str()) != 0 && errno != EEXIST) return false;
-#else
-                if (mkdir(current.c_str(), 0755) != 0 && errno != EEXIST) return false;
-#endif
-            }
-        } else {
-            current += c;
-        }
-    }
-
-    if (!current.empty()) {
-#ifdef _WIN32
-        if (_mkdir(current.c_str()) != 0 && errno != EEXIST) return false;
-#else
-        if (mkdir(current.c_str(), 0755) != 0 && errno != EEXIST) return false;
-#endif
-    }
-    return true;
-}
 
 __global__ void render_image(vec3* framebuffer, int image_width, int image_height, CameraParameter cam_params, DeviceScene* d_scene, int frame){
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -60,14 +22,6 @@ __global__ void render_image(vec3* framebuffer, int image_width, int image_heigh
 }
 
 void export_to_ppm(string filename, vec3* framebuffers, int image_width, int image_height, int num_frames){
-    size_t slash_pos = filename.find_last_of("/\\");
-    if (slash_pos != std::string::npos) {
-        std::string out_dir = filename.substr(0, slash_pos);
-        if (!ensure_dir_exists(out_dir)) {
-            fprintf(stderr, "Error: Could not create output directory %s (%s).\n", out_dir.c_str(), std::strerror(errno));
-            return;
-        }
-    }
 
     for(int f = 0; f < num_frames - 1; f++){
         string frame_filename = filename + "_" + std::to_string(f) + ".ppm";
@@ -163,7 +117,7 @@ __device__ bool intersect_leaf(
 //     const GPU_LeafNode* leaves = d_scene->bvh_leaves;
 //     const Triangle* triangles = d_scene->triangles;
 
-//     int stack[64];   // 深さは log2(N) 程度 → 固定長でOK
+//     int stack[64];   // 深さ�E log2(N) 程度 ↁE固定長でOK
 //     int sp = 0;
 
 //     bool hit_any = false;
@@ -175,7 +129,7 @@ __device__ bool intersect_leaf(
 //     stack[sp++] = root;
 
 //     while (sp > 0) {
-//         if (sp >= 64) return hit_any;  // とりあえず溢れたら打ち切り
+//         if (sp >= 64) return hit_any;  // とりあえず溢れたら打ち刁E��
 //         int node_idx = stack[--sp];
 //         const GPU_BVH_Node& node = nodes[node_idx];
 
@@ -195,7 +149,7 @@ __device__ bool intersect_leaf(
 //                 //     continue;
 //                 // }
 //                 const Triangle* tri =
-//                     &triangles[leaf.tri_offset + i]; // indexを0にするとエラーが起きないので、ここが原因
+//                     &triangles[leaf.tri_offset + i]; // indexめEにするとエラーが起きなぁE�Eで、ここが原因
 
 //                 Intersection cand;
 //                 if (intersect_triangle(ray, tri, cand, t_min, closest_t)) {
@@ -229,8 +183,11 @@ __device__ bool find_intersection_bvh(
     float t_min,
     float t_max
 ){
+
     const GPU_BVH_Node* nodes  = d_scene->curr_bvh_nodes;
     const GPU_LeafNode* leaves = d_scene->frame_leaves;
+
+    if (!nodes || !leaves) return false;
 
     int stack[64];
     int sp = 0;
@@ -239,62 +196,53 @@ __device__ bool find_intersection_bvh(
     float closest_t = t_max;
 
     int root = d_scene->curr_bvh_root_node_idx;
-    // printf("Starting BVH traversal from root node %d\n", root);
-    if(root < 0) return false;
+    if (root < 0) return false;
 
     stack[sp++] = root;
 
-    while(sp > 0){
-        if(sp >= 64) return hit_any;  // 念のため
+    while (sp > 0) {
+        if (sp >= 64) return hit_any;
 
         int node_idx = stack[--sp];
+        if (node_idx < 0) continue;
+
         const GPU_BVH_Node& node = nodes[node_idx];
 
-        // node AABB で cull
-        if(!intersect_aabb(node.aabb, ray, t_min, closest_t))
+        if (!intersect_aabb(node.aabb, ray, t_min, closest_t))
             continue;
 
-        // -------------------------
-        // left child
-        // -------------------------
-        if(node.left_type == GPU_CHILD_LEAF){
-            // printf("Checking leaf node %d\n", node.left_idx);
-            if(node.left_idx >= 0){
+        if (node.left_type == GPU_CHILD_LEAF) {
+            if (node.left_idx >= 0) {
                 const GPU_LeafNode& leaf = leaves[node.left_idx];
-
-                // leaf AABB があるならここでも cull できる
-                if(intersect_aabb(leaf.aabb, ray, t_min, closest_t)){
-                    if(intersect_leaf(leaf, ray, itsc, t_min, closest_t)){
+                if (intersect_aabb(leaf.aabb, ray, t_min, closest_t)) {
+                    Intersection cand;
+                    if (intersect_leaf(leaf, ray, cand, t_min, closest_t)) {
+                        closest_t = cand.t;
+                        itsc = cand;
                         hit_any = true;
                     }
                 }
             }
-        }
-        else { // GPU_CHILD_NODE
-            if(node.left_idx >= 0){
-                if(sp < 64) stack[sp++] = node.left_idx;
-            }
+        } else {
+            if (node.left_idx >= 0 && sp < 64)
+                stack[sp++] = node.left_idx;
         }
 
-        // -------------------------
-        // right child
-        // -------------------------
-        if(node.right_type == GPU_CHILD_LEAF){
-            // printf("Checking leaf node %d\n", node.right_idx);
-            if(node.right_idx >= 0){
+        if (node.right_type == GPU_CHILD_LEAF) {
+            if (node.right_idx >= 0) {
                 const GPU_LeafNode& leaf = leaves[node.right_idx];
-
-                if(intersect_aabb(leaf.aabb, ray, t_min, closest_t)){
-                    if(intersect_leaf(leaf, ray, itsc, t_min, closest_t)){
+                if (intersect_aabb(leaf.aabb, ray, t_min, closest_t)) {
+                    Intersection cand;
+                    if (intersect_leaf(leaf, ray, cand, t_min, closest_t)) {
+                        closest_t = cand.t;
+                        itsc = cand;
                         hit_any = true;
                     }
                 }
             }
-        }
-        else { // GPU_CHILD_NODE
-            if(node.right_idx >= 0){
-                if(sp < 64) stack[sp++] = node.right_idx;
-            }
+        } else {
+            if (node.right_idx >= 0 && sp < 64)
+                stack[sp++] = node.right_idx;
         }
     }
 
@@ -318,7 +266,6 @@ __device__ vec3 raycast(const Ray& ray, const DeviceScene* d_scene, int frame){
     } else {
         color = vec3(0.0f, 0.0f, 0.7f);
     }
-
     return color;
 }
 

@@ -113,6 +113,7 @@ struct DeviceScene{
     // curr build nodes
     GPU_BVH_Node* curr_bvh_nodes;
     int* num_curr_bvh_nodes;
+    int num_curr_bvh_nodes_value;
 
     // AGC input clusters
     GPU_Cluster* clusters;
@@ -121,7 +122,7 @@ struct DeviceScene{
     // 今フレーム完成 root（実質 curr 側）
     int curr_bvh_root_node_idx;
 
-    ulonglong2* dirty_keys;
+    GPU_DirtyKey* dirty_keys;
     int num_dirty_keys;
 
     GPU_LeafNode* frame_leaves;
@@ -165,7 +166,7 @@ void copy_scene_to_device_scene(
     Scene& scene,
     DeviceScene*& d_scene,
     DeviceScene& h_device_scene,
-    const std::vector<ulonglong2>& h_dirty_keys   // CPU側で作った dirty_keys を受け取る
+    const std::vector<DirtyKey>& h_dirty_keys
 );
 
 void free_device_scene(DeviceScene* d_scene);
@@ -180,6 +181,6 @@ void update_bvh_gpu(
     DeviceScene* d_scene,
     DeviceScene& h_scene,
     Scene& scene,
-    const std::vector<ulonglong2>& h_dirty_keys,
+    const std::vector<DirtyKey>& h_dirty_keys,
     cudaStream_t stream
 );

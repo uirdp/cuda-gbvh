@@ -16,7 +16,7 @@ void destroy_tree(TreeNode *root);
 //     std::vector<Triangle> h_tris(num_objects);
 //     for (int i = 0; i < num_objects; ++i) {
 //         Triangle* tri = static_cast<Triangle*>(scene.objects[i]); // object = triangle 前提
-//         h_tris[i] = *tri;  // ここで Triangle 全体をコピー
+//         h_tris[i] = *tri;  // ここで Triangle 全体をコピ�E
 //     }
 
 //     // Triangle* d_tris = nullptr;
@@ -43,7 +43,7 @@ void destroy_tree(TreeNode *root);
 //     h_device_scene.num_actions_at_frame = d_num_actions;
 //     h_device_scene.max_num_actions = max_num_action;
 
-//     // scenarioをフレームごとにmax_num_actionのサイズに揃えて1次元配列に変換
+//     // scenarioをフレームごとにmax_num_actionのサイズに揁E��て1次允E�E列に変換
 //     vector<Action> h_scenario(num_frames * max_num_action);
 //     for(int f = 0; f < num_frames; f++){
 //         for(int i = 0; i < max_num_action; i++){
@@ -51,7 +51,7 @@ void destroy_tree(TreeNode *root);
 //             if(i < h_num_actions[f]){
 //                 h_scenario[idx] = scene.scenario[f][i];
 //             } else {
-//                 int not_effective = -1;                 // GBVHだと-1になることもあるので別の方法を考える
+//                 int not_effective = -1;                 // GBVHだと-1になることもある�Eで別の方法を老E��めE
 //                 h_scenario[idx].obj_id = not_effective; 
 //             }
 //         }
@@ -65,10 +65,10 @@ void destroy_tree(TreeNode *root);
 
 //     FlattenContext ctx;
 
-//     // flatten（root index を取得）
+//     // flatten�E�Eoot index を取得！E
 //     int root_idx = flatten_node(scene.bvtree_root, ctx);
 
-//     // flatten 後
+//     // flatten 征E
 //     Triangle* d_bvh_tris = nullptr;
 //     int num_bvh_tris = (int)ctx.triangles.size();
 //     CHECK_CUDA(cudaMalloc(&d_bvh_tris, sizeof(Triangle) * num_bvh_tris));
@@ -79,12 +79,12 @@ void destroy_tree(TreeNode *root);
 
 //     printf("Number of triangles in BVH: %d\n", num_bvh_tris);
 
-//     // こっちを traversal 用に使う
+//     // こっちめEtraversal 用に使ぁE
 //     h_device_scene.triangles = d_bvh_tris;
-//     h_device_scene.num_triangles = num_bvh_tris; // これも合わせる;
+//     h_device_scene.num_triangles = num_bvh_tris; // これも合わせめE
 
 
-//     // --- GPU メモリ確保 ---
+//     // --- GPU メモリ確俁E---
 //     GPU_BVH_Node* d_bvh_nodes = nullptr;
 //     GPU_LeafNode* d_bvh_leaves = nullptr;
 
@@ -96,7 +96,7 @@ void destroy_tree(TreeNode *root);
 //     CHECK_CUDA(cudaMalloc(&d_bvh_leaves,
 //         sizeof(GPU_LeafNode) * num_leaves));
 
-//     // --- 転送 ---
+//     // --- 転送E---
 //     CHECK_CUDA(cudaMemcpy(d_bvh_nodes,
 //         ctx.nodes.data(),
 //         sizeof(GPU_BVH_Node) * num_nodes,
@@ -107,7 +107,7 @@ void destroy_tree(TreeNode *root);
 //         sizeof(GPU_LeafNode) * num_leaves,
 //         cudaMemcpyHostToDevice));
 
-//     // --- DeviceScene に設定 ---
+//     // --- DeviceScene に設宁E---
 //     h_device_scene.bvh_nodes      = d_bvh_nodes;
 //     h_device_scene.bvh_leaves     = d_bvh_leaves;
 //     h_device_scene.bvh_root       = root_idx;
@@ -118,19 +118,19 @@ void destroy_tree(TreeNode *root);
 //     CHECK_CUDA(cudaMemcpy(d_scene, &h_device_scene, sizeof(DeviceScene), cudaMemcpyHostToDevice));
        
 // }
-
+uint64_t LeafNode::g_next_leaf_code = 1;
 void copy_scene_to_device_scene(
     Scene& scene,
     DeviceScene*& d_scene,
     DeviceScene& h_device_scene,
-    const std::vector<ulonglong2>& h_dirty_keys   // CPU側で作った dirty_keys を受け取る
+    const std::vector<DirtyKey>& h_dirty_keys
 )
 {
     int num_objects = (int)scene.objects.size();
     int num_frames  = (int)scene.scenario.size();
 
     // ------------------------------------------------------------
-    // 0. h_device_scene を明示初期化
+    // 0. h_device_scene を�E示初期匁E
     // ------------------------------------------------------------
     h_device_scene.triangles = nullptr;
     h_device_scene.num_triangles = 0;
@@ -159,6 +159,8 @@ void copy_scene_to_device_scene(
 
     h_device_scene.dirty_keys = nullptr;
     h_device_scene.num_dirty_keys = 0;
+    h_device_scene.frame_leaves = nullptr;
+    h_device_scene.num_frame_leaves = 0;
 
     // ------------------------------------------------------------
     // 1. 全TriangleをGPUへ
@@ -271,6 +273,7 @@ void copy_scene_to_device_scene(
         h_dirty_leaf.tri_count  = num_tris;
         h_dirty_leaf.grid_code  = scene.dirty_leaves[i]->grid_code;
         h_dirty_leaf.grid_bits  = scene.dirty_leaves[i]->grid_bits;
+        h_dirty_leaf.leaf_code  = scene.dirty_leaves[i]->leaf_code; // 追加しました
 
         h_dirty_leaves[i] = h_dirty_leaf;
     }
@@ -285,7 +288,7 @@ void copy_scene_to_device_scene(
     h_device_scene.dirty_leaves = d_dirty_leaves;
     h_device_scene.num_dirty_leaves = num_dirty_leaves;
 
-    // dirty leaf aabb 初期化
+    // dirty leaf aabb 初期匁E
     if (num_dirty_leaves > 0) {
         constexpr int BLOCK_SIZE = 256;
         int grid_size = (num_dirty_leaves + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -301,15 +304,17 @@ void copy_scene_to_device_scene(
     // ------------------------------------------------------------
     // 4. dirty keys をGPUへ
     // ------------------------------------------------------------
-    ulonglong2* d_dirty_keys = nullptr;
+    GPU_DirtyKey* d_dirty_keys = nullptr;
     int num_dirty_keys = (int)h_dirty_keys.size();
 
     if (num_dirty_keys > 0) {
-        CHECK_CUDA(cudaMalloc(&d_dirty_keys, sizeof(ulonglong2) * num_dirty_keys));
+        CHECK_CUDA(cudaMalloc(&d_dirty_keys,
+                            sizeof(GPU_DirtyKey) * num_dirty_keys));
+
         CHECK_CUDA(cudaMemcpy(d_dirty_keys,
-                              h_dirty_keys.data(),
-                              sizeof(ulonglong2) * num_dirty_keys,
-                              cudaMemcpyHostToDevice));
+                            h_dirty_keys.data(),
+                            sizeof(GPU_DirtyKey) * num_dirty_keys,
+                            cudaMemcpyHostToDevice));
     }
 
     h_device_scene.dirty_keys = d_dirty_keys;
@@ -352,8 +357,8 @@ void copy_scene_to_device_scene(
     h_device_scene.prev_bvh_root_node_idx = -1;
 
     // ------------------------------------------------------------
-    // 7. curr build nodes を確保
-    //    初回は dirty clusters だけから build するので上限は N-1
+    // 7. curr build nodes を確俁E
+    //    初回は dirty clusters だけかめEbuild するので上限は N-1
     // ------------------------------------------------------------
     GPU_BVH_Node* d_curr_bvh_nodes = nullptr;
     int* d_num_curr_bvh_nodes = nullptr;
@@ -369,6 +374,8 @@ void copy_scene_to_device_scene(
     h_device_scene.curr_bvh_nodes = d_curr_bvh_nodes;
     h_device_scene.num_curr_bvh_nodes = d_num_curr_bvh_nodes;
     h_device_scene.curr_bvh_root_node_idx = -1;
+    h_device_scene.frame_leaves = nullptr;
+    h_device_scene.num_frame_leaves = 0;
 
     // ------------------------------------------------------------
     // 8. DeviceScene 自体をGPUへ
@@ -393,29 +400,29 @@ void copy_scene_to_device_scene(
 //     const int num_tris = (int)ctx.triangles.size();
 //     const int num_dirty_leaves = (int)scene.dirty_leaves.size();
 
-//     // flatten が失敗しているなら安全に抜ける（必要なら abort）
+//     // flatten が失敗してぁE��なら安�Eに抜ける（忁E��なめEabort�E�E
 //     if (root_idx < 0 || num_nodes <= 0)
 //     {
-//         // ここで device 側BVHを無効化するなら root=-1 を書き戻すなど
+//         // ここで device 側BVHを無効化するなめEroot=-1 を書き戻すなど
 //         DeviceScene h{};
 //         CHECK_CUDA(cudaMemcpy(&h, d_scene, sizeof(DeviceScene), cudaMemcpyDeviceToHost));
 //         h.bvh_root = -1;
 //         h.num_bvh_nodes = 0;
 //         h.num_bvh_leaves = 0;
 //         h.num_triangles = 0;
-//         // 既存の領域は解放してもいいが、デバッグしやすいように残す運用もあり
+//         // 既存�E領域は解放してもいぁE��、デバッグしやすいように残す運用もあめE
 //         CHECK_CUDA(cudaMemcpy(d_scene, &h, sizeof(DeviceScene), cudaMemcpyHostToDevice));
 //         return;
 //     }
 
 //     // ----------------------------
-//     // 2) 既存 DeviceScene を取得
+//     // 2) 既孁EDeviceScene を取征E
 //     // ----------------------------
 //     DeviceScene h_device_scene{};
 //     CHECK_CUDA(cudaMemcpy(&h_device_scene, d_scene, sizeof(DeviceScene), cudaMemcpyDeviceToHost));
 
 //     // ----------------------------
-//     // 3) 古いGPUバッファを解放（nodes/leaves/triangles）
+//     // 3) 古いGPUバッファを解放�E�Eodes/leaves/triangles�E�E
 //     // ----------------------------
 //     if (h_device_scene.bvh_nodes)
 //     {
@@ -439,7 +446,7 @@ void copy_scene_to_device_scene(
 //     }
 
 //     // ----------------------------
-//     // 4) 新規GPUバッファ確保
+//     // 4) 新規GPUバッファ確俁E
 //     // ----------------------------
 //     GPU_BVH_Node *d_bvh_nodes = nullptr;
 //     GPU_LeafNode *d_bvh_leaves = nullptr;
@@ -449,7 +456,7 @@ void copy_scene_to_device_scene(
 //     CHECK_CUDA(cudaMalloc(&d_bvh_nodes, sizeof(GPU_BVH_Node) * num_nodes));
 //     CHECK_CUDA(cudaMalloc(&d_bvh_leaves, sizeof(GPU_LeafNode) * num_leaves));
 
-//     // triangles が 0 のケースもあるのでガード
+//     // triangles ぁE0 のケースもある�EでガーチE
 //     if (num_tris > 0)
 //     {
 //         CHECK_CUDA(cudaMalloc(&d_bvh_tris, sizeof(Triangle) * num_tris));
@@ -469,7 +476,7 @@ void copy_scene_to_device_scene(
 //     }
 
 //     // ----------------------------
-//     // 5) 転送（Host -> Device）
+//     // 5) 転送E��Eost -> Device�E�E
 //     // ----------------------------
 //     CHECK_CUDA(cudaMemcpy(d_bvh_nodes,
 //                           ctx.nodes.data(),
@@ -512,7 +519,7 @@ void copy_scene_to_device_scene(
 
 //             for (int j = num_tris; j < MAX_LEAF_SIZE; ++j)
 //             {
-//                 h_dirty_leaf.triangles[j] = Triangle(); // ダミーで初期化
+//                 h_dirty_leaf.triangles[j] = Triangle(); // ダミ�Eで初期匁E
 //             }
 
 //             h_dirty_leaf.tri_offset = 0; // 未使用
@@ -529,7 +536,7 @@ void copy_scene_to_device_scene(
 //     }
 
 //     // ----------------------------
-//     // 6) DeviceScene を更新して書き戻す
+//     // 6) DeviceScene を更新して書き戻ぁE
 //     // ----------------------------
 //     h_device_scene.bvh_nodes = d_bvh_nodes;
 //     h_device_scene.bvh_leaves = d_bvh_leaves;
@@ -549,13 +556,13 @@ void free_device_scene(DeviceScene* d_scene)
     if (!d_scene) return;
 
     // ------------------------------------------------------------
-    // 1. DeviceScene を host にコピー
+    // 1. DeviceScene めEhost にコピ�E
     // ------------------------------------------------------------
     DeviceScene h_scene{};
     CHECK_CUDA(cudaMemcpy(&h_scene, d_scene, sizeof(DeviceScene), cudaMemcpyDeviceToHost));
 
     // ------------------------------------------------------------
-    // 2. 基本データ
+    // 2. 基本チE�Eタ
     // ------------------------------------------------------------
     if (h_scene.triangles)
         CHECK_CUDA(cudaFree(h_scene.triangles));
@@ -609,12 +616,12 @@ void free_device_scene(DeviceScene* d_scene)
         CHECK_CUDA(cudaFree(h_scene.frame_leaves));
 
     // ------------------------------------------------------------
-    // 8. 最後に DeviceScene 本体
+    // 8. 最後に DeviceScene 本佁E
     // ------------------------------------------------------------
     CHECK_CUDA(cudaFree(d_scene));
 }
 
-// ここからは別のファイルに移すべきかも
+// ここからは別のファイルに移すべきかめE
 static void calc_scene_aabb(vector<Object *> &objects, AABB &scene_aabb, AABB &cent_aabb)
 {
     for (int i = 0; i < objects.size(); i++)
@@ -626,7 +633,7 @@ static void calc_scene_aabb(vector<Object *> &objects, AABB &scene_aabb, AABB &c
     }
 }
 
-// 初期木の生成
+// 初期木の生�E
 void build_initial_tree(Scene &scene, InputParameter &param, int frame, vector<LeafNode *> &dirty_leaves, DirtyKeySet& dirty_keys)
 {
     calc_scene_aabb(scene.objects, scene.aabb, scene.cent_aabb);
@@ -649,28 +656,44 @@ void build_initial_grid(Scene &scene, InputParameter &param, int frame, vector<L
     process_actions(scene.grid_root, scene.objects, scene.scenario[frame], scene.cent_aabb, frame, dirty_leaves, dirty_keys);
 }
 
-void build_initial_bvh_gpu(Scene scene, DeviceScene* d_scene, DeviceScene& h_scene, cudaStream_t stream, const vector<ulonglong2>& h_dirty_keys)
+void build_initial_bvh_gpu(Scene scene, DeviceScene* d_scene, DeviceScene& h_scene, cudaStream_t stream, const vector<DirtyKey>& h_dirty_keys)
 {
     build_bvh_on_gpu(d_scene, 
                      h_scene,
-                     scene.dirty_leaves, // CPU側で作った dirty_leaves を渡
-                     h_dirty_keys,        // CPU側で作った dirty_keys を渡す
+                     scene.dirty_leaves, // CPU側で作っぁEdirty_leaves を渡
+                     h_dirty_keys,        // CPU側で作っぁEdirty_keys を渡ぁE
                      stream);
 }
+
+#define TRACE_STEP(msg) do { \
+    printf("[update_bvh_gpu] %s\n", msg); \
+    fflush(stdout); \
+} while(0)
+
+#define SYNC_STEP(msg) do { \
+    TRACE_STEP(msg); \
+    CHECK_CUDA(cudaGetLastError()); \
+    CHECK_CUDA(cudaDeviceSynchronize()); \
+} while(0)
 
 void update_bvh_gpu(
     DeviceScene* d_scene,
     DeviceScene& h_scene,
     Scene& scene,
-    const std::vector<ulonglong2>& h_dirty_keys,
+    const std::vector<DirtyKey>& h_dirty_keys,
     cudaStream_t stream
 )
 {
+    TRACE_STEP("Starting BVH update on GPU...");
+    printf("Updating BVH on GPU...\n");
     // ------------------------------------------------------------
-    // 1. dirty leaves を host 側で GPU_LeafNode に詰める
+    // 1. dirty leaves めEhost 側で GPU_LeafNode に詰める
     // ------------------------------------------------------------
     int num_dirty_leaves = (int)scene.dirty_leaves.size();
+    printf("Number of dirty leaves: %d\n", num_dirty_leaves);
+    fflush(stdout);
 
+    TRACE_STEP("Preparing dirty leaves for GPU transfer...");
     std::vector<GPU_LeafNode> h_dirty_leaves(num_dirty_leaves);
 
     for (int i = 0; i < num_dirty_leaves; ++i)
@@ -684,8 +707,8 @@ void update_bvh_gpu(
             continue;
         }
 
-        // CPU 側 aabb は古い可能性があるので一旦コピーし、
-        // あとで GPU 側で triangles から再計算
+        // CPU 側 aabb は古ぁE��能性がある�Eで一旦コピ�Eし、E
+        // あとで GPU 側で triangles から再計箁E
         h_dirty_leaf.aabb = scene.dirty_leaves[i]->aabb;
 
         int num_tris = std::min(scene.dirty_leaves[i]->nobjs, MAX_LEAF_SIZE);
@@ -703,38 +726,64 @@ void update_bvh_gpu(
         h_dirty_leaf.tri_count  = num_tris;
         h_dirty_leaf.grid_code  = scene.dirty_leaves[i]->grid_code;
         h_dirty_leaf.grid_bits  = scene.dirty_leaves[i]->grid_bits;
+        h_dirty_leaf.leaf_code  = scene.dirty_leaves[i]->leaf_code;
 
         h_dirty_leaves[i] = h_dirty_leaf;
     }
+    SYNC_STEP("Dirty leaves prepared for GPU transfer.");
 
     // ------------------------------------------------------------
-    // 2. 今フレームで作り直す GPU リソースだけ解放
-    //    prev_* は前フレーム完成BVHなので残す
+    // 2. 今フレームで作り直ぁEGPU リソースだけ解放
+    //    prev_* は前フレーム完�EBVHなので残す
     // ------------------------------------------------------------
+    TRACE_STEP("before free dirty leaves");
     if (h_scene.dirty_leaves) {
         CHECK_CUDA(cudaFree(h_scene.dirty_leaves));
         h_scene.dirty_leaves = nullptr;
     }
+    SYNC_STEP("Previous dirty leaves freed.");
 
+    TRACE_STEP("before free dirty keys");
     if (h_scene.dirty_keys) {
         CHECK_CUDA(cudaFree(h_scene.dirty_keys));
         h_scene.dirty_keys = nullptr;
     }
+    SYNC_STEP("Previous dirty keys freed.");
 
+    TRACE_STEP("before free clusters");
     if (h_scene.clusters) {
-        CHECK_CUDA(cudaFree(h_scene.clusters));
+        cudaPointerAttributes attr{};
+        cudaError_t attr_err = cudaPointerGetAttributes(&attr, h_scene.clusters);
+        int mem_type = -1;
+#if CUDART_VERSION >= 10000
+        mem_type = (int)attr.type;
+#else
+        mem_type = (int)attr.memoryType;
+#endif
+        if (attr_err == cudaSuccess && (mem_type == (int)cudaMemoryTypeDevice || mem_type == (int)cudaMemoryTypeManaged)) {
+            CHECK_CUDA(cudaFree(h_scene.clusters));
+        } else {
+            cudaGetLastError();
+            printf("Skip cudaFree(h_scene.clusters): ptr=%p attr_err=%d mem_type=%d\\n",
+                   (void*)h_scene.clusters, (int)attr_err, mem_type);
+        }
         h_scene.clusters = nullptr;
     }
+    SYNC_STEP("Previous clusters freed.");
 
+    TRACE_STEP("before free current BVH nodes");
     if (h_scene.curr_bvh_nodes) {
         CHECK_CUDA(cudaFree(h_scene.curr_bvh_nodes));
         h_scene.curr_bvh_nodes = nullptr;
     }
+    SYNC_STEP("Previous current BVH nodes freed.");
 
+    TRACE_STEP("before free current BVH node count");
     if (h_scene.num_curr_bvh_nodes) {
         CHECK_CUDA(cudaFree(h_scene.num_curr_bvh_nodes));
         h_scene.num_curr_bvh_nodes = nullptr;
     }
+    SYNC_STEP("Previous current BVH node count freed.");
 
     h_scene.num_dirty_leaves = 0;
     h_scene.num_dirty_keys = 0;
@@ -742,7 +791,7 @@ void update_bvh_gpu(
     h_scene.curr_bvh_root_node_idx = -1;
 
     // ------------------------------------------------------------
-    // 3. 新しい dirty leaves を GPU に転送
+    // 3. 新しい dirty leaves めEGPU に転送E
     // ------------------------------------------------------------
     GPU_LeafNode* d_dirty_leaves = nullptr;
     if (num_dirty_leaves > 0) {
@@ -758,16 +807,16 @@ void update_bvh_gpu(
     h_scene.num_dirty_leaves = num_dirty_leaves;
 
     // ------------------------------------------------------------
-    // 4. dirty_keys を GPU に転送
+    // 4. dirty_keys めEGPU に転送E
     // ------------------------------------------------------------
-    ulonglong2* d_dirty_keys = nullptr;
+    GPU_DirtyKey* d_dirty_keys = nullptr;
     int num_dirty_keys = (int)h_dirty_keys.size();
 
     if (num_dirty_keys > 0) {
-        CHECK_CUDA(cudaMalloc(&d_dirty_keys, sizeof(ulonglong2) * num_dirty_keys));
+        CHECK_CUDA(cudaMalloc(&d_dirty_keys, sizeof(GPU_DirtyKey) * num_dirty_keys));
         CHECK_CUDA(cudaMemcpyAsync(d_dirty_keys,
                                    h_dirty_keys.data(),
-                                   sizeof(ulonglong2) * num_dirty_keys,
+                                   sizeof(GPU_DirtyKey) * num_dirty_keys,
                                    cudaMemcpyHostToDevice,
                                    stream));
     }
@@ -776,7 +825,7 @@ void update_bvh_gpu(
     h_scene.num_dirty_keys = num_dirty_keys;
 
     // ------------------------------------------------------------
-    // 5. GPU で dirty leaf の AABB を triangles から再計算
+    // 5. GPU で dirty leaf の AABB めEtriangles から再計箁E
     // ------------------------------------------------------------
     if (num_dirty_leaves > 0) {
         constexpr int BLOCK_SIZE = 256;
@@ -810,10 +859,10 @@ void update_bvh_gpu(
     h_scene.num_clusters = num_dirty_leaves;
 
     // ------------------------------------------------------------
-    // 7. curr build nodes を確保
-    //    初期状態では dirty_clusters 数を上限に確保
-    //    affected_clusters を後で連結するなら build_bvh_on_gpu 内で
-    //    必要に応じて再確保する設計でもよい
+    // 7. curr build nodes を確俁E
+    //    初期状態では dirty_clusters 数を上限に確俁E
+    //    affected_clusters を後で連結するなめEbuild_bvh_on_gpu 冁E��
+    //    忁E��に応じて再確保する設計でもよぁE
     // ------------------------------------------------------------
     GPU_BVH_Node* d_curr_bvh_nodes = nullptr;
     int* d_num_curr_bvh_nodes = nullptr;
@@ -831,12 +880,12 @@ void update_bvh_gpu(
     h_scene.curr_bvh_root_node_idx = -1;
 
     // ------------------------------------------------------------
-    // 8. prev_* はそのまま残す
-    //    （前フレームの完成BVHなのでここでは触らない）
+    // 8. prev_* はそ�Eまま残す
+    //    �E�前フレームの完�EBVHなのでここでは触らなぁE��E
     // ------------------------------------------------------------
 
     // ------------------------------------------------------------
-    // 9. 更新済み DeviceScene を GPU に書き戻す
+    // 9. 更新済み DeviceScene めEGPU に書き戻ぁE
     // ------------------------------------------------------------
     CHECK_CUDA(cudaMemcpyAsync(d_scene,
                                &h_scene,
@@ -845,14 +894,15 @@ void update_bvh_gpu(
                                stream));
 
     // ------------------------------------------------------------
-    // 10. BVH 構築
-    //     affected_clusters を使う場合は build_bvh_on_gpu 側で
-    //     prev から集めて dirty clusters と連結してから reduce
+    // 10. BVH 構篁E
+    //     affected_clusters を使ぁE��合�E build_bvh_on_gpu 側で
+    //     prev から雁E��て dirty clusters と連結してから reduce
     // ------------------------------------------------------------
+    printf("Building BVH on GPU with %d dirty leaves and %d dirty keys...\n", num_dirty_leaves, num_dirty_keys);
     if (num_dirty_leaves >= 2) {
         build_bvh_on_gpu(
             d_scene,
-            h_scene,              // ← 今の設計では h_scene ごと渡す方が自然
+            h_scene,              // ↁE今�E設計では h_scene ごと渡す方が�E然
             scene.dirty_leaves,   // CPU 側 dirty leaf 一覧
             h_dirty_keys,         // CPU 側 dirty keys
             stream

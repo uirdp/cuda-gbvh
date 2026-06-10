@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\dev\univ\nisim\cuda-gbvh\cuda-gbvh\build-win2\CMakeFiles\47c67f27f09b1c99d4e777902ec633c5\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{45AD006C-5AB6-332C-9585-787B8BE70927}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
