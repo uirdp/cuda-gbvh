@@ -58,3 +58,39 @@ struct NodeKeyHash
         return std::hash<uint64_t>()(k.code) ^ (std::hash<uint8_t>()(k.bits) << 1);
     }
 };
+
+struct GridKey {
+    uint64_t code;
+    uint8_t bits;
+
+    bool operator==(const GridKey& rhs) const {
+        return code == rhs.code && bits == rhs.bits;
+    }
+};
+
+struct GridKeyHash {
+    size_t operator()(const GridKey& k) const {
+        size_t h = std::hash<uint64_t>{}(k.code);
+        h ^= std::hash<int>{}((int)k.bits)
+             + 0x9e3779b9 + (h << 6) + (h >> 2);
+        return h;
+    }
+};
+
+static std::unordered_set<GridKey, GridKeyHash>
+build_dirty_grid_key_set(const std::vector<DirtyKey>& dirty_keys)
+{
+    std::unordered_set<GridKey, GridKeyHash> s;
+    s.reserve(dirty_keys.size());
+
+    for (const DirtyKey& k : dirty_keys)
+    {
+        if (k.type == DIRTY_KEY_GRID)
+        {
+            s.insert(GridKey{k.code, k.bits});
+        }
+    }
+
+    return s;
+}
+

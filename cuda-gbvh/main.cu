@@ -603,7 +603,7 @@ int main(int argc, char **argv)
     camera_param.vertical = vec3(0.0, 2.0, 0.0);
     camera_param.origin = vec3(1.5, 2.0, 3.5);
 
-    for (int frame = 0; frame < 10; frame++)
+    for (int frame = 0; frame < num_frames; frame++)
     {
         if (scene.scenario.size() > 2)
         {
